@@ -5,7 +5,7 @@ import { IMAGES } from "@/constants";
 export default function Index() {
 
   const handleSignIn = () => {
-    router.replace('/')
+    router.replace('/(auth)/signin');
   }
   return (
         <View className="flex-1 bg-white justify-between px-8 py-16">
