@@ -38,7 +38,7 @@ export default function ServiceRequestScreen() {
     setFormData((prev) => ({ ...prev, ...updates }))
   }
 
-  const API_BASE = "https://client-app-amber.vercel.app/";
+  const API_BASE = "https://client-app-khaki-gamma.vercel.app";
 
   const handleSubmit = async () => {
     if (!formData.serviceType.trim()) {
