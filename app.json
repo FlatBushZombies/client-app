@@ -22,7 +22,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro"
     },
@@ -44,6 +44,19 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d21ae9f4-5637-4946-bf71-7e50d0bc5c41"
+      }
+    },
+    "owner": "bigcat87",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d21ae9f4-5637-4946-bf71-7e50d0bc5c41"
     }
   }
 }
