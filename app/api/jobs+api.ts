@@ -4,8 +4,6 @@ const sql = neon(`${process.env.DATABASE_URL}`)
 
 export async function POST(request: Request) {
   try {
-    const sql = neon(`${process.env.DATABASE_URL}`)
-
     const formData = await request.json()
 
     const { serviceType, selectedServices, startDate, endDate, maxPrice, specialistChoice, additionalInfo, documents } =
@@ -47,19 +45,18 @@ export async function POST(request: Request) {
     })
   }
 }
+
 export async function GET(request: Request) {
   try {
-    // Get query parameters from URL
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const serviceType = searchParams.get('serviceType')
-    const limit = searchParams.get('limit') || '10'
+    const limit = searchParams.get('limit') || '50'
     const offset = searchParams.get('offset') || '0'
 
     let result
 
     if (id) {
-      // Fetch a specific service request by ID
       result = await sql`
         SELECT * FROM service_request 
         WHERE id = ${id}
@@ -77,7 +74,6 @@ export async function GET(request: Request) {
         headers: { "Content-Type": "application/json" },
       })
     } else {
-      // Fetch multiple service requests with optional filtering
       if (serviceType) {
         result = await sql`
           SELECT * FROM service_request 
