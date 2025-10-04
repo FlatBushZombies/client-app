@@ -1,6 +1,7 @@
+console.log("DEBUG DATABASE_URL:", process.env.DATABASE_URL ? "DEFINED" : "UNDEFINED")
+
+
 import { neon } from "@neondatabase/serverless"
-
-
 
 const sql = neon(process.env.DATABASE_URL!)
 
