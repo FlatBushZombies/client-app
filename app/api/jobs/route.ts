@@ -1,24 +1,27 @@
-console.log("DEBUG DATABASE_URL:", process.env.DATABASE_URL ? "DEFINED" : "UNDEFINED")
-
-
 import { neon } from "@neondatabase/serverless"
 
+// Initialize Neon client on the server
 const sql = neon(process.env.DATABASE_URL!)
 
+// CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
+// Handle OPTIONS preflight requests
 export async function OPTIONS() {
-  return Response.json({}, { headers: corsHeaders })
+  return new Response(null, { headers: corsHeaders })
 }
 
+// POST route: insert new service request
 export async function POST(request: Request) {
+  console.log("🔎 API HIT /api/service_request [POST]")
+  console.log("DATABASE_URL present?", Boolean(process.env.DATABASE_URL))
+
   try {
     const formData = await request.json()
-
     const {
       serviceType,
       selectedServices,
@@ -54,14 +57,24 @@ export async function POST(request: Request) {
       RETURNING *;
     `
 
-    return Response.json({ success: true, data: result[0] }, { status: 201, headers: corsHeaders })
+    return new Response(
+      JSON.stringify({ success: true, data: result[0] }),
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    )
   } catch (error: any) {
     console.error("Error inserting service request:", error)
-    return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    )
   }
 }
 
+// GET route: fetch service requests
 export async function GET(request: Request) {
+  console.log("🔎 API HIT /api/service_request [GET]")
+  console.log("DATABASE_URL present?", Boolean(process.env.DATABASE_URL))
+
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
@@ -76,15 +89,16 @@ export async function GET(request: Request) {
         SELECT * FROM service_request 
         WHERE id = ${id}
       `
-
       if (result.length === 0) {
-        return Response.json(
-          { success: false, error: "Service request not found" },
-          { status: 404, headers: corsHeaders },
+        return new Response(
+          JSON.stringify({ success: false, error: "Service request not found" }),
+          { status: 404, headers: corsHeaders }
         )
       }
-
-      return Response.json({ success: true, data: result[0] }, { status: 200, headers: corsHeaders })
+      return new Response(JSON.stringify({ success: true, data: result[0] }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
     } else {
       if (serviceType) {
         result = await sql`
@@ -101,8 +115,8 @@ export async function GET(request: Request) {
         `
       }
 
-      return Response.json(
-        {
+      return new Response(
+        JSON.stringify({
           success: true,
           data: result,
           pagination: {
@@ -110,12 +124,15 @@ export async function GET(request: Request) {
             offset: Number.parseInt(offset),
             total: result.length,
           },
-        },
-        { status: 200, headers: corsHeaders },
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
   } catch (error: any) {
     console.error("Error fetching service requests:", error)
-    return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    )
   }
 }
