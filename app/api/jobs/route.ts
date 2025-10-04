@@ -1,6 +1,11 @@
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(`${process.env.DATABASE_URL!}`)
+// make sure DATABASE_URL is set in .env.local or Vercel → Project → Settings → Environment Variables
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not defined in environment variables")
+}
+
+const sql = neon(process.env.DATABASE_URL)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,8 +21,16 @@ export async function POST(request: Request) {
   try {
     const formData = await request.json()
 
-    const { serviceType, selectedServices, startDate, endDate, maxPrice, specialistChoice, additionalInfo, documents } =
-      formData
+    const {
+      serviceType,
+      selectedServices,
+      startDate,
+      endDate,
+      maxPrice,
+      specialistChoice,
+      additionalInfo,
+      documents,
+    } = formData
 
     const result = await sql`
       INSERT INTO service_request (
