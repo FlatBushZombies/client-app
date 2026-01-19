@@ -7,3 +7,5 @@ const Chat = () => {
         </Text>
     </View>
 }
+
+export default Chat

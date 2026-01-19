@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "client-app",
+    "name": "Quickhands",
     "slug": "client-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/quickhands.png",
     "scheme": "clientapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

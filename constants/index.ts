@@ -6,9 +6,12 @@ import home from "@/assets/icons/home.png"
 import list from "@/assets/icons/list.png"
 import chat from "@/assets/icons/chat.png"
 
+import logo from "@/assets/images/quickhands.png"
+
 export const IMAGES = {
     client,
-    provider
+    provider,
+    logo
 }
 
 export const icons = {

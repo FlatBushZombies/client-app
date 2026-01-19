@@ -1,85 +1,94 @@
-import { Tabs } from "expo-router";
-import { Image, ImageSourcePropType, View } from "react-native";
-
-import { icons } from "@/constants";
+import { Tabs } from "expo-router"
+import { View, Text } from "react-native"
+import { HomeIcon } from "react-native-heroicons/outline"
+import { BriefcaseIcon } from "react-native-heroicons/outline"
+import { ChatBubbleLeftRightIcon } from "react-native-heroicons/outline"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const TabIcon = ({
-  source,
+  Icon,
   focused,
+  label,
 }: {
-  source: ImageSourcePropType;
-  focused: boolean;
-}) => (
-  <View
-    className={`flex flex-row justify-center items-center rounded-full ${focused ? "bg-general-300" : ""}`}
-  >
-    <View
-      className={`rounded-full w-12 h-12 items-center justify-center ${focused ? "bg-general-400" : ""}`}
-    >
-      <Image
-        source={source}
-        tintColor="white"
-        resizeMode="contain"
-        className="w-7 h-7"
-      />
+  Icon: any
+  focused: boolean
+  label: string
+}) => {
+  return (
+    <View className="items-center justify-center">
+      <View
+        className={`mb-1 rounded-full px-4 py-2 ${
+          focused ? "bg-black/5" : "bg-transparent"
+        }`}
+      >
+        <Icon
+          size={22}
+          color={focused ? "#000000" : "#8E8E93"}
+          strokeWidth={focused ? 2.5 : 2}
+        />
+      </View>
+
+      <Text
+        className={`text-xs font-medium ${
+          focused ? "text-black" : "text-gray-400"
+        }`}
+      >
+        {label}
+      </Text>
     </View>
-  </View>
-);
+  )
+}
 
 export default function Layout() {
+  const insets = useSafeAreaInsets()
+
   return (
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "white",
-        tabBarInactiveTintColor: "white",
         tabBarShowLabel: false,
+        headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#333333",
-          borderRadius: 50,
-          paddingBottom: 0, // ios only
-          overflow: "hidden",
-          marginHorizontal: 20,
-          marginBottom: 20,
-          height: 78,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row",
-          position: "absolute",
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 0.5,
+          borderTopColor: "#E5E5EA",
+          height: 72 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 6,
+          elevation: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.04,
+          shadowRadius: 6,
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Jobs",
-          headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.home} focused={focused} />
+            <TabIcon Icon={HomeIcon} focused={focused} label="Home" />
           ),
         }}
       />
+
       <Tabs.Screen
         name="service"
         options={{
-          title: "Add",
-          headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.list} focused={focused} />
+            <TabIcon Icon={BriefcaseIcon} focused={focused} label="Jobs" />
           ),
         }}
       />
+
       <Tabs.Screen
-        name="chat"
+        name="messages"
         options={{
-          title: "Chat",
-          headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.chat} focused={focused} />
+            <TabIcon Icon={ChatBubbleLeftRightIcon} focused={focused} label="Messages" />
           ),
         }}
       />
     </Tabs>
-  );
+  )
 }
