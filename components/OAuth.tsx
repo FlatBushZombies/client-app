@@ -1,49 +1,88 @@
-import { useOAuth } from "@clerk/clerk-expo";
-import { router } from "expo-router";
-import { Alert, Image, Text, View } from "react-native";
+import { useState } from "react"
+import { useOAuth } from "@clerk/clerk-expo"
+import { router } from "expo-router"
+import { Alert, Image, Text, View } from "react-native"
 
-import CustomButton from "@/components/CustomButton";
-import { icons } from "@/constants";
-import { googleOAuth } from "@/lib/auth";
+import CustomButton from "@/components/CustomButton"
+import { icons } from "@/constants"
+import { googleOAuth } from "@/lib/auth"
 
 const OAuth = () => {
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" })
+  const [loading, setLoading] = useState(false)
 
   const handleGoogleSignIn = async () => {
-    const result = await googleOAuth(startOAuthFlow);
+    if (loading) return
 
-    if (result.code === "session_exists") {
-      Alert.alert("Success", "Session exists. Redirecting to home screen.");
-      router.replace("/(root)/home");
+    try {
+      setLoading(true)
+
+      const result = await googleOAuth(startOAuthFlow)
+
+      if (result.success) {
+        router.replace("/(root)/home")
+        return
+      }
+
+      Alert.alert("Authentication failed", result.message)
+    } catch {
+      Alert.alert(
+        "Something went wrong",
+        "Please try again or check your connection."
+      )
+    } finally {
+      setLoading(false)
     }
-
-    Alert.alert(result.success ? "Success" : "Error", result.message);
-  };
+  }
 
   return (
-    <View className="flex-1 bg-white justify-between px-8 py-16">
-      <View className="flex flex-row justify-center items-center mt-4 gap-x-3">
-        <View className="flex-1 h-[1px] bg-general-100" />
-        <Text className="text-lg">Sign Up and find the perfect specialist for your task</Text>
-        <View className="flex-1 h-[1px] bg-general-100" />
+    <View className="w-full">
+      {/* Section Spacer */}
+      <View className="h-4" />
+
+      {/* Divider */}
+      <View className="flex-row items-center gap-x-4">
+        <View className="flex-1 h-[1px] bg-gray-200" />
+        <Text className="text-xs text-gray-400 uppercase tracking-wider">
+          Continue with
+        </Text>
+        <View className="flex-1 h-[1px] bg-gray-200" />
       </View>
 
+      {/* Vertical Breathing Space */}
+      <View className="h-8" />
+
+      {/* Google Button */}
       <CustomButton
-        title="Log In with Google"
-        className="mt-5 w-full shadow-none"
+        title={loading ? "Signing you in…" : "Continue with Google"}
+        className="w-full py-4"
+        disabled={loading}
         IconLeft={() => (
           <Image
             source={icons.google}
             resizeMode="contain"
-            className="w-5 h-5 mx-2"
+            className="w-5 h-5 mr-3"
           />
         )}
         bgVariant="outline"
         textVariant="primary"
         onPress={handleGoogleSignIn}
       />
-    </View>
-  );
-};
 
-export default OAuth;
+      {/* Trust Copy Spacer */}
+      <View className="h-6" />
+
+      {/* Trust Note */}
+      <Text className="text-xs text-gray-400 text-center leading-relaxed px-6">
+        We only use your account to create your profile.
+        {"\n"}
+        No posts. No spam.
+      </Text>
+
+      {/* Bottom Spacer */}
+      <View className="h-2" />
+    </View>
+  )
+}
+
+export default OAuth

@@ -82,10 +82,10 @@ export default function Layout() {
       />
 
       <Tabs.Screen
-        name="messages"
+        name="chat"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={ChatBubbleLeftRightIcon} focused={focused} label="Messages" />
+            <TabIcon Icon={ChatBubbleLeftRightIcon} focused={focused} label="Chat" />
           ),
         }}
       />
