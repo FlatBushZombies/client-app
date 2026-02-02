@@ -100,7 +100,7 @@ export default function Index() {
         <View className="w-full items-center pb-4">
           {/* Primary Button - Service Provider */}
           <TouchableOpacity
-            className="bg-gray-900 rounded-2xl w-full items-center overflow-hidden"
+            className="bg-[#111827] rounded-2xl w-full items-center overflow-hidden"
             onPress={handleGetStarted}
             activeOpacity={0.9}
             style={{

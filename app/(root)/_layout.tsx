@@ -1,8 +1,6 @@
 import { Tabs } from "expo-router"
-import { View, Text } from "react-native"
-import { HomeIcon } from "react-native-heroicons/outline"
-import { BriefcaseIcon } from "react-native-heroicons/outline"
-import { ChatBubbleLeftRightIcon } from "react-native-heroicons/outline"
+import { Text, View } from "react-native"
+import { BriefcaseIcon, ChatBubbleLeftRightIcon, HomeIcon, UserIcon } from "react-native-heroicons/outline"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const TabIcon = ({
@@ -15,22 +13,22 @@ const TabIcon = ({
   label: string
 }) => {
   return (
-    <View className="items-center justify-center">
+    <View className="items-center justify-center w-20 mt-2">
       <View
-        className={`mb-1 rounded-full px-4 py-2 ${
-          focused ? "bg-black/5" : "bg-transparent"
+        className={`mb-1 flex-row items-center justify-center rounded-full px-4 py-2 ${
+          focused ? "bg-[#111827]" : "bg-transparent"
         }`}
       >
         <Icon
           size={22}
-          color={focused ? "#000000" : "#8E8E93"}
+          color={focused ? "#FFFFFF" : "#9CA3AF"}
           strokeWidth={focused ? 2.5 : 2}
         />
       </View>
 
       <Text
-        className={`text-xs font-medium ${
-          focused ? "text-black" : "text-gray-400"
+        className={`mt-0.5 text-[11px] font-semibold tracking-wide ${
+          focused ? "text-[#111827]" : "text-gray-400"
         }`}
       >
         {label}
@@ -86,6 +84,14 @@ export default function Layout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon Icon={ChatBubbleLeftRightIcon} focused={focused} label="Chat" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={UserIcon} focused={focused} label="Profile" />
           ),
         }}
       />
