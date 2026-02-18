@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import { useEffect, useState } from "react"
+import { useSocket } from "@/contexts/SocketContext"
 import {
   Dimensions,
   Image,
@@ -57,6 +58,7 @@ const popularSearches = ["Plumber", "Electrician", "Cleaning", "Painting", "Movi
 const HomeScreen = () => {
   const { user, isLoaded } = useUser()
   const { isSignedIn } = useAuth()
+  const { unreadCount } = useSocket()
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
@@ -128,6 +130,7 @@ const HomeScreen = () => {
             </View>
           </View>
           <TouchableOpacity
+            onPress={() => router.push("/(root)/applications")}
             style={{
               backgroundColor: "#F3F4F6",
               borderRadius: 12,
@@ -135,17 +138,26 @@ const HomeScreen = () => {
             }}
           >
             <Ionicons name="notifications-outline" size={22} color="#374151" />
-            <View
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 8,
-                height: 8,
-                backgroundColor: "#EF4444",
-                borderRadius: 4,
-              }}
-            />
+            {unreadCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 6,
+                  right: 6,
+                  minWidth: 18,
+                  height: 18,
+                  backgroundColor: "#EF4444",
+                  borderRadius: 9,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 4,
+                }}
+              >
+                <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "700" }}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -219,11 +231,6 @@ const HomeScreen = () => {
         </View>
 
         {/* Hero Illustration */}
-        <Image
-          source={IMAGES.provider}
-          style={{ width: "100%", height: 200 }}
-          resizeMode="cover"
-        />
 
         {/* Main content block similar to reference design */}
         <View
@@ -606,7 +613,7 @@ const HomeScreen = () => {
               </Text>
             </View>
             <View style={{ marginLeft: 12, flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="briefcase-outline" size={32} color="#6B7280" />
+              
               <Ionicons name="person-outline" size={24} color="#9CA3AF" style={{ marginLeft: -8 }} />
             </View>
           </TouchableOpacity>

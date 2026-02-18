@@ -11,6 +11,8 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  StyleSheet,
+  Platform,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
@@ -26,6 +28,87 @@ interface FormData {
   documents: string
 }
 
+// ─── Design tokens — QuickHands navy palette ──────────────────────
+const C = {
+  // Core brand
+  navy:        "#1E2A3A",   // primary — logo bg
+  navyDark:    "#152030",   // deepest navy — logo Q mark
+  navyMid:     "#243244",   // cards on dark bg
+  navyLight:   "#2D3F54",   // elevated surfaces
+  navyGhost:   "#354A62",   // borders / dividers on dark
+
+  // Entry screen (dark)
+  entryBg:     "#111820",   // deepest background
+  entryCard:   "#1A2535",
+
+  // Modal (light)
+  modalBg:     "#F2F4F7",
+  surface:     "#FFFFFF",
+  border:      "#E2E6ED",
+  borderFocus: "#1E2A3A",
+
+  // Text
+  textLight:   "#FFFFFF",
+  textNavy:    "#1E2A3A",
+  textSub:     "#64748B",
+  textMuted:   "#94A3B8",
+  placeholder: "#A8B5C4",
+
+  // Tint
+  accentSoft:  "#EBF0F7",
+
+  white:       "#FFFFFF",
+}
+
+// ─── Reusable labelled input ───────────────────────────────────────
+function Field({
+  label,
+  icon,
+  ...props
+}: {
+  label: string
+  icon?: string
+  [k: string]: any
+}) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <View style={styles.fieldWrap}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
+        {icon && (
+          <Ionicons
+            name={icon as any}
+            size={16}
+            color={focused ? C.navy : C.placeholder}
+            style={{ marginRight: 8 }}
+          />
+        )}
+        <TextInput
+          style={styles.input}
+          placeholderTextColor={C.placeholder}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          {...props}
+        />
+      </View>
+    </View>
+  )
+}
+
+// ─── Section card ─────────────────────────────────────────────────
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardAccentBar} />
+        <Text style={styles.cardTitle}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  )
+}
+
+// ─── Main screen ──────────────────────────────────────────────────
 export default function ServiceRequestScreen() {
   const [modalVisible, setModalVisible] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -53,7 +136,6 @@ export default function ServiceRequestScreen() {
     const updated = formData.selectedServices.includes(service)
       ? formData.selectedServices.filter((s) => s !== service)
       : [...formData.selectedServices, service]
-
     updateFormData({ selectedServices: updated })
   }
 
@@ -62,18 +144,14 @@ export default function ServiceRequestScreen() {
       Alert.alert("Authentication Required", "Please sign in first.")
       return
     }
-
     if (!formData.serviceType || !formData.startDate || !formData.endDate || !formData.maxPrice) {
       Alert.alert("Missing Fields", "Please complete all required fields.")
       return
     }
-
     try {
       setLoading(true)
-
       const token = await getToken()
       if (!token) throw new Error("Token missing")
-
       const payload = {
         serviceType: formData.serviceType,
         selectedServices: formData.selectedServices,
@@ -89,7 +167,6 @@ export default function ServiceRequestScreen() {
         userName: user.fullName || "Anonymous",
         userAvatar: user.imageUrl || null,
       }
-
       const response = await fetch(`${API_BASE}/api/jobs`, {
         method: "POST",
         headers: {
@@ -98,9 +175,7 @@ export default function ServiceRequestScreen() {
         },
         body: JSON.stringify(payload),
       })
-
       const result = await response.json()
-
       if (response.status === 201 && result?.success) {
         Alert.alert("Success", "Service request created successfully.")
         setFormData({
@@ -117,7 +192,7 @@ export default function ServiceRequestScreen() {
       } else {
         Alert.alert("Error", result?.message || "Request failed.")
       }
-    } catch (err) {
+    } catch {
       Alert.alert("Network Error", "Please try again.")
     } finally {
       setLoading(false)
@@ -125,173 +200,622 @@ export default function ServiceRequestScreen() {
   }, [formData, user, isLoaded, isSignedIn])
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* ENTRY SCREEN */}
-      <View className="flex-1 justify-center px-6">
-        <Text className="text-3xl font-bold text-gray-900 mb-3">
-          Post a task in minutes
-        </Text>
-        <Text className="text-base text-gray-600 mb-8">
-          Tell us what you need and get matched with trusted professionals.
+    <SafeAreaView style={styles.root}>
+
+      {/* ── ENTRY SCREEN (dark navy) ── */}
+      <View style={styles.entryWrap}>
+
+        {/* decorative ring accents */}
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+
+        {/* Q logo mark */}
+        <View style={styles.logoMark}>
+          <Text style={styles.logoQ}>Q</Text>
+        </View>
+
+        <View style={styles.badge}>
+          <View style={styles.badgeDot} />
+          <Text style={styles.badgeText}>Trusted Professionals</Text>
+        </View>
+
+        <Text style={styles.heroTitle}>Post a task{"\n"}in minutes</Text>
+        <Text style={styles.heroSub}>
+          Tell us what you need and get matched with trusted professionals instantly.
         </Text>
 
         <TouchableOpacity
-          className="bg-emerald-600 py-4 px-6 rounded-2xl shadow-md self-start"
+          style={styles.heroCta}
           onPress={() => setModalVisible(true)}
+          activeOpacity={0.85}
         >
-          <Text className="text-white font-semibold text-lg">
-            Create a Job
-          </Text>
+          <Text style={styles.heroCtaText}>Create a Job</Text>
+          <View style={styles.heroCtaArrow}>
+            <Ionicons name="arrow-forward" size={15} color={C.navy} />
+          </View>
         </TouchableOpacity>
+
+        {/* stat pills */}
+        <View style={styles.statsRow}>
+          {[
+            { icon: "star",             label: "4.9 Rating" },
+            { icon: "people",           label: "12k+ Pros" },
+            { icon: "shield-checkmark", label: "Verified" },
+          ].map((s) => (
+            <View key={s.label} style={styles.statPill}>
+              <Ionicons name={s.icon as any} size={12} color={C.textMuted} />
+              <Text style={styles.statText}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      {/* MODAL */}
+      {/* ── MODAL ── */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView className="flex-1 bg-gray-50">
-          {/* HEADER */}
-          <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-200">
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#374151" />
+        <SafeAreaView style={styles.modalRoot}>
+
+          {/* header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.iconBtn}>
+              <Ionicons name="close" size={18} color={C.textNavy} />
             </TouchableOpacity>
-            <Text className="text-lg font-semibold text-gray-900">
-              New Service Request
-            </Text>
-            <View style={{ width: 24 }} />
+            <Text style={styles.modalTitle}>New Service Request</Text>
+            <View style={{ width: 36 }} />
           </View>
 
-          <ScrollView className="px-5 py-6" contentContainerStyle={{ paddingBottom: 120 }}>
+          {/* progress bar */}
+          <View style={styles.progressRow}>
+            {[0, 1, 2, 3].map((i) => (
+              <View key={i} style={[styles.dot, i === 0 && styles.dotActive]} />
+            ))}
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* SERVICE TYPE */}
-            <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-              <Text className="text-lg font-semibold mb-3">Service Type</Text>
-              <TextInput
+            <Card title="Service Type">
+              <Field
+                label="What do you need?"
+                icon="construct-outline"
                 placeholder="e.g. Plumbing, Cleaning"
                 value={formData.serviceType}
-                onChangeText={(text) => updateFormData({ serviceType: text })}
-                className="bg-gray-50 rounded-xl px-4 py-3"
+                onChangeText={(t: string) => updateFormData({ serviceType: t })}
               />
-
-              <View className="flex-row flex-wrap gap-3 mt-4">
+              <Text style={styles.chipGroupLabel}>Quick select</Text>
+              <View style={styles.chipRow}>
                 {["Plumbing", "Electrical", "Cleaning"].map((service) => {
                   const active = formData.selectedServices.includes(service)
                   return (
                     <TouchableOpacity
                       key={service}
                       onPress={() => handleServiceToggle(service)}
-                      className={`px-4 py-2 rounded-full border ${
-                        active
-                          ? "bg-emerald-600 border-emerald-600"
-                          : "bg-gray-100 border-gray-200"
-                      }`}
+                      style={[styles.chip, active && styles.chipActive]}
+                      activeOpacity={0.75}
                     >
-                      <Text
-                        className={`text-sm font-medium ${
-                          active ? "text-white" : "text-gray-700"
-                        }`}
-                      >
+                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
                         {service}
                       </Text>
                     </TouchableOpacity>
                   )
                 })}
               </View>
-            </View>
+            </Card>
 
             {/* TIMELINE */}
-            <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-              <Text className="text-lg font-semibold mb-3">Timeline</Text>
-              <View className="flex-row gap-4">
-                <TextInput
-                  placeholder="Start date"
-                  value={formData.startDate}
-                  onChangeText={(text) => updateFormData({ startDate: text })}
-                  className="flex-1 bg-gray-50 rounded-xl px-4 py-3"
-                />
-                <TextInput
-                  placeholder="End date"
-                  value={formData.endDate}
-                  onChangeText={(text) => updateFormData({ endDate: text })}
-                  className="flex-1 bg-gray-50 rounded-xl px-4 py-3"
-                />
+            <Card title="Timeline">
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Field
+                    label="Start date"
+                    icon="calendar-outline"
+                    placeholder="mm/dd/yyyy"
+                    value={formData.startDate}
+                    onChangeText={(t: string) => updateFormData({ startDate: t })}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Field
+                    label="End date"
+                    icon="calendar-outline"
+                    placeholder="mm/dd/yyyy"
+                    value={formData.endDate}
+                    onChangeText={(t: string) => updateFormData({ endDate: t })}
+                  />
+                </View>
               </View>
-            </View>
+            </Card>
 
-            {/* PRICING */}
-            <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-              <Text className="text-lg font-semibold mb-3">Budget</Text>
-              <TextInput
-                placeholder="Maximum price"
+            {/* BUDGET */}
+            <Card title="Budget">
+              <Field
+                label="Maximum price"
+                icon="cash-outline"
+                placeholder="0.00"
                 value={formData.maxPrice}
-                onChangeText={(text) => updateFormData({ maxPrice: text })}
+                onChangeText={(t: string) => updateFormData({ maxPrice: t })}
                 keyboardType="numeric"
-                className="bg-gray-50 rounded-xl px-4 py-3"
               />
-            </View>
+            </Card>
 
             {/* SPECIALIST */}
-            <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-              <Text className="text-lg font-semibold mb-3">Specialist Preference</Text>
-
-              {["Any Specialist", "Top Rated", "Most Affordable"].map((choice) => {
-                const active = formData.specialistChoice === choice
+            <Card title="Specialist Preference">
+              {[
+                { key: "Any Specialist",  desc: "We'll match you automatically",  icon: "people-outline"   },
+                { key: "Top Rated",       desc: "Highest reviewed professionals",  icon: "star-outline"     },
+                { key: "Most Affordable", desc: "Lowest cost options",             icon: "pricetag-outline" },
+              ].map((choice) => {
+                const active = formData.specialistChoice === choice.key
                 return (
                   <TouchableOpacity
-                    key={choice}
-                    onPress={() => updateFormData({ specialistChoice: choice })}
-                    className={`p-4 mb-3 rounded-xl border ${
-                      active
-                        ? "bg-emerald-50 border-emerald-600"
-                        : "bg-white border-gray-200"
-                    }`}
+                    key={choice.key}
+                    onPress={() => updateFormData({ specialistChoice: choice.key })}
+                    style={[styles.specialistRow, active && styles.specialistRowActive]}
+                    activeOpacity={0.8}
                   >
-                    <Text className="font-medium text-gray-900">{choice}</Text>
-                    <Text className="text-sm text-gray-500 mt-1">
-                      {choice === "Any Specialist" && "We’ll match you automatically"}
-                      {choice === "Top Rated" && "Highest reviewed professionals"}
-                      {choice === "Most Affordable" && "Lowest cost options"}
-                    </Text>
+                    <View style={[styles.specialistIcon, active && styles.specialistIconActive]}>
+                      <Ionicons
+                        name={choice.icon as any}
+                        size={17}
+                        color={active ? C.white : C.textSub}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.specialistLabel, active && { color: C.navy }]}>
+                        {choice.key}
+                      </Text>
+                      <Text style={styles.specialistDesc}>{choice.desc}</Text>
+                    </View>
+                    {active && (
+                      <Ionicons name="checkmark-circle" size={20} color={C.navy} />
+                    )}
                   </TouchableOpacity>
                 )
               })}
-            </View>
+            </Card>
 
             {/* ADDITIONAL INFO */}
-            <View className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
-              <Text className="text-lg font-semibold mb-3">Additional Details</Text>
-              <TextInput
-                placeholder="Describe your task..."
-                value={formData.additionalInfo}
-                onChangeText={(text) => updateFormData({ additionalInfo: text })}
-                multiline
-                numberOfLines={4}
-                className="bg-gray-50 rounded-xl px-4 py-3 mb-4"
-              />
-              <TextInput
-                placeholder="Document URLs (optional)"
+            <Card title="Additional Details">
+              <Text style={styles.fieldLabel}>Describe your task</Text>
+              <View style={styles.textAreaWrap}>
+                <TextInput
+                  placeholder="Include relevant details about location, timing, or special requirements..."
+                  placeholderTextColor={C.placeholder}
+                  value={formData.additionalInfo}
+                  onChangeText={(t) => updateFormData({ additionalInfo: t })}
+                  multiline
+                  numberOfLines={4}
+                  style={styles.textArea}
+                  textAlignVertical="top"
+                />
+              </View>
+              <Field
+                label="Document URLs"
+                icon="link-outline"
+                placeholder="https:// (optional, comma-separated)"
                 value={formData.documents}
-                onChangeText={(text) => updateFormData({ documents: text })}
-                className="bg-gray-50 rounded-xl px-4 py-3"
+                onChangeText={(t: string) => updateFormData({ documents: t })}
               />
-            </View>
+            </Card>
           </ScrollView>
 
-          {/* FOOTER CTA */}
-          <View className="px-5 py-4 border-t border-gray-200 bg-white">
+          {/* FOOTER */}
+          <View style={styles.footer}>
             <TouchableOpacity
-              className="bg-emerald-600 py-4 rounded-2xl"
+              style={styles.submitBtn}
               onPress={handleSubmit}
               disabled={loading}
+              activeOpacity={0.88}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={C.white} />
               ) : (
-                <Text className="text-white font-semibold text-lg text-center">
-                  Post Job Request
-                </Text>
+                <>
+                  <Text style={styles.submitText}>Post Job Request</Text>
+                  <Ionicons name="send" size={15} color={C.white} style={{ marginLeft: 8 }} />
+                </>
               )}
             </TouchableOpacity>
           </View>
+
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
   )
 }
+
+// ─── Styles ───────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: C.entryBg,
+  },
+
+  // ── Entry (dark) ──────────────────────────────────────────────
+  entryWrap: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    overflow: "hidden",
+  },
+  circle1: {
+    position: "absolute",
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    borderWidth: 1,
+    borderColor: C.navyGhost,
+    top: -110,
+    right: -130,
+    opacity: 0.45,
+  },
+  circle2: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    borderWidth: 1,
+    borderColor: C.navyGhost,
+    bottom: 50,
+    left: -80,
+    opacity: 0.35,
+  },
+
+  logoMark: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: C.navy,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  logoQ: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: C.navyDark,
+    letterSpacing: -1,
+    lineHeight: 36,
+  },
+
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: C.navyMid,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    marginBottom: 20,
+    gap: 7,
+    borderWidth: 1,
+    borderColor: C.navyLight,
+  },
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#4ADE80",
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: C.textMuted,
+    letterSpacing: 0.4,
+  },
+
+  heroTitle: {
+    fontSize: 42,
+    fontWeight: "800",
+    color: C.textLight,
+    lineHeight: 50,
+    letterSpacing: -1.2,
+    marginBottom: 14,
+  },
+  heroSub: {
+    fontSize: 15,
+    color: C.textMuted,
+    lineHeight: 23,
+    marginBottom: 36,
+    maxWidth: 310,
+  },
+
+  heroCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: C.textLight,
+    paddingVertical: 14,
+    paddingLeft: 22,
+    paddingRight: 14,
+    borderRadius: 100,
+    gap: 10,
+    marginBottom: 36,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  heroCtaText: {
+    color: C.navy,
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+  heroCtaArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.accentSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  statPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.navyMid,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 100,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: C.navyLight,
+  },
+  statText: {
+    fontSize: 12,
+    color: C.textMuted,
+    fontWeight: "600",
+  },
+
+  // ── Modal ─────────────────────────────────────────────────────
+  modalRoot: {
+    flex: 1,
+    backgroundColor: C.modalBg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.modalBg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: C.textNavy,
+    letterSpacing: -0.3,
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: C.surface,
+  },
+  dot: {
+    height: 3,
+    flex: 1,
+    borderRadius: 2,
+    backgroundColor: C.border,
+  },
+  dotActive: {
+    backgroundColor: C.navy,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 120,
+    gap: 12,
+  },
+
+  // ── Card ──────────────────────────────────────────────────────
+  card: {
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: C.border,
+    shadowColor: C.navy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  cardAccentBar: {
+    width: 3,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: C.navy,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: C.textNavy,
+    letterSpacing: -0.2,
+  },
+
+  // ── Field ─────────────────────────────────────────────────────
+  fieldWrap: { gap: 6 },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: C.textSub,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.modalBg,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 13 : 10,
+    borderWidth: 1.5,
+    borderColor: C.border,
+  },
+  inputRowFocused: {
+    borderColor: C.navy,
+    backgroundColor: "#F8FAFC",
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: C.textNavy,
+    padding: 0,
+  },
+
+  // ── Chips ─────────────────────────────────────────────────────
+  chipGroupLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: C.textSub,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  chipRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 100,
+    backgroundColor: C.modalBg,
+    borderWidth: 1.5,
+    borderColor: C.border,
+  },
+  chipActive: {
+    backgroundColor: C.navy,
+    borderColor: C.navy,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: C.textSub,
+  },
+  chipTextActive: {
+    color: C.white,
+  },
+
+  // ── Row ───────────────────────────────────────────────────────
+  row: { flexDirection: "row" },
+
+  // ── Specialist ────────────────────────────────────────────────
+  specialistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    backgroundColor: C.modalBg,
+  },
+  specialistRowActive: {
+    borderColor: C.navy,
+    backgroundColor: C.accentSoft,
+  },
+  specialistIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: C.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  specialistIconActive: {
+    backgroundColor: C.navy,
+    borderColor: C.navy,
+  },
+  specialistLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: C.textNavy,
+    marginBottom: 2,
+  },
+  specialistDesc: {
+    fontSize: 12,
+    color: C.textSub,
+  },
+
+  // ── Text area ─────────────────────────────────────────────────
+  textAreaWrap: {
+    backgroundColor: C.modalBg,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  textArea: {
+    fontSize: 14,
+    color: C.textNavy,
+    minHeight: 96,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: C.surface,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  submitBtn: {
+    backgroundColor: C.navy,
+    borderRadius: 100,
+    paddingVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: C.navyDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  submitText: {
+    color: C.white,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+})
