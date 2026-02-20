@@ -24,47 +24,55 @@ import { router } from "expo-router"
 
 // ─── Design Tokens ────────────────────────────────────────────
 const C = {
-  // QuickHands navy extracted from logo
-  navy:       "#1C2B3A",   // darkest — page bg
-  navyDeep:   "#152131",   // deeper variant
-  navyCard:   "#223045",   // card surface
-  navyBorder: "#2E3F52",   // subtle borders
-  navyMid:    "#344D64",   // mid-tone accent
-  navyLight:  "#4A6680",   // muted text on dark
-  slate:      "#6B8DA8",   // secondary label
+  // Green primary
+  navy:       "#1A7F5A",   // primary green (matches ServiceRequestScreen)
+  navyDark:   "#0F5C3F",
+  navyMid:    "#1E8F65",
+  navyLight:  "#239970",
+  navyGhost:  "#2AAD7E",
 
-  // Green accents (from existing codebase)
-  fern:       "#52B788",
-  forest:     "#2D6A4F",
-  mint:       "#D8EDDA",
+  // White surface
+  bg:         "#FFFFFF",
+  surface:    "#FFFFFF",
+  surfaceAlt: "#F0F7F4",
+  border:     "#CEEADE",
+  borderSub:  "#E3F2EC",
+
+  // Text
+  textDark:   "#0D3D27",
+  textSub:    "#3D7A5E",
+  textMuted:  "#6DAF92",
+  textFaint:  "#93C9AE",
+
+  // Accents
+  fern:       "#1A7F5A",
+  fernSoft:   "#E6F5EE",
+  fernGlow:   "#52B78820",
   leaf:       "#74C69D",
 
-  // Neutrals
   cloud:      "#FFFFFF",
-  mist:       "#F0F4F8",
-  fog:        "#E2EAF0",
 
   // Danger
   red:        "#EF4444",
-  redBg:      "rgba(239,68,68,0.08)",
-  redBorder:  "rgba(239,68,68,0.25)",
+  redBg:      "rgba(239,68,68,0.06)",
+  redBorder:  "rgba(239,68,68,0.2)",
 }
 
 const shadow = {
   card: Platform.select({
-    ios: { shadowColor: "#0A1520", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 28 },
-    android: { elevation: 10 },
+    ios: { shadowColor: "#0F5C3F", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.10, shadowRadius: 24 },
+    android: { elevation: 6 },
   }),
   glow: Platform.select({
-    ios: { shadowColor: "#52B788", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 18 },
+    ios: { shadowColor: "#1A7F5A", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16 },
     android: { elevation: 8 },
   }),
   btn: Platform.select({
-    ios: { shadowColor: "#0A1520", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20 },
-    android: { elevation: 12 },
+    ios: { shadowColor: "#0F5C3F", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 20 },
+    android: { elevation: 10 },
   }),
   sm: Platform.select({
-    ios: { shadowColor: "#0A1520", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8 },
+    ios: { shadowColor: "#0D3D27", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
     android: { elevation: 2 },
   }),
 }
@@ -77,81 +85,96 @@ const Profile = () => {
   if (!user) return null
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.navy }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
 
         {/* ── Header ── */}
-        <View style={{ paddingHorizontal: 22, paddingTop: 24, marginBottom: 28 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10 }}>
-            <View style={{
-              width: 6, height: 6, borderRadius: 3,
-              backgroundColor: C.fern,
-            }} />
+        <View style={{
+          paddingHorizontal: 24,
+          paddingTop: 20,
+          paddingBottom: 8,
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+        }}>
+          <View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 6 }}>
+              <View style={{
+                width: 6, height: 6, borderRadius: 3,
+                backgroundColor: C.fern,
+              }} />
+              <Text style={{
+                color: C.textMuted,
+                fontSize: 11,
+                fontWeight: "700",
+                letterSpacing: 2,
+                textTransform: "uppercase",
+              }}>
+                Account
+              </Text>
+            </View>
             <Text style={{
-              color: C.slate,
-              fontSize: 11,
-              fontWeight: "700",
-              letterSpacing: 2,
-              textTransform: "uppercase",
+              color: C.textDark,
+              fontSize: 34,
+              fontWeight: "900",
+              letterSpacing: -1.5,
+              lineHeight: 40,
             }}>
-              Account
+              Profile
             </Text>
           </View>
-          <Text style={{
-            color: C.cloud,
-            fontSize: 34,
-            fontWeight: "900",
-            letterSpacing: -1.5,
-            lineHeight: 40,
-          }}>
-            Profile
-          </Text>
+
+          {/* Settings pill */}
+          <Pressable style={({ pressed }) => ({
+            width: 42,
+            height: 42,
+            borderRadius: 14,
+            backgroundColor: pressed ? C.border : C.surfaceAlt,
+            borderWidth: 1.5,
+            borderColor: C.border,
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 2,
+          })}>
+            <Settings size={18} color={C.fern} />
+          </Pressable>
         </View>
 
         {/* ── Hero User Card ── */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ paddingHorizontal: 20, marginTop: 16, marginBottom: 14 }}>
           <View style={{
-            backgroundColor: C.navyCard,
+            backgroundColor: C.fern,
             borderRadius: 28,
-            borderWidth: 1,
-            borderColor: C.navyBorder,
             overflow: "hidden",
-            ...shadow.card,
+            ...shadow.glow,
           }}>
-            {/* Top accent line */}
+            {/* Subtle top shine */}
             <View style={{
-              height: 2.5,
-              backgroundColor: C.fern,
-              marginHorizontal: 40,
-              borderBottomLeftRadius: 2,
-              borderBottomRightRadius: 2,
-              opacity: 0.85,
+              position: "absolute",
+              top: 0, left: 0, right: 0,
+              height: 1.5,
+              backgroundColor: "rgba(255,255,255,0.25)",
             }} />
 
             <View style={{ padding: 24 }}>
               {/* Avatar + Name row */}
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
-                {/* Avatar with glow ring */}
-                <View style={{
-                  position: "relative",
-                  marginRight: 16,
-                }}>
+                <View style={{ position: "relative", marginRight: 16 }}>
                   <View style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 24,
-                    borderWidth: 2,
-                    borderColor: `${C.fern}50`,
+                    width: 70,
+                    height: 70,
+                    borderRadius: 22,
+                    borderWidth: 2.5,
+                    borderColor: "rgba(255,255,255,0.35)",
                     overflow: "hidden",
                     backgroundColor: C.navyMid,
-                    ...shadow.glow,
                   }}>
                     <Image
                       source={{ uri: user.imageUrl }}
-                      style={{ width: 72, height: 72 }}
+                      style={{ width: 70, height: 70 }}
                       resizeMode="cover"
                     />
                   </View>
@@ -163,9 +186,9 @@ const Profile = () => {
                     width: 14,
                     height: 14,
                     borderRadius: 7,
-                    backgroundColor: C.fern,
+                    backgroundColor: "#4ADE80",
                     borderWidth: 2.5,
-                    borderColor: C.navyCard,
+                    borderColor: C.fern,
                   }} />
                 </View>
 
@@ -173,22 +196,22 @@ const Profile = () => {
                 <View style={{ flex: 1 }}>
                   <Text style={{
                     color: C.cloud,
-                    fontSize: 19,
+                    fontSize: 20,
                     fontWeight: "800",
                     letterSpacing: -0.6,
-                    marginBottom: 5,
+                    marginBottom: 6,
                   }}>
                     {user.fullName || "Unnamed User"}
                   </Text>
                   <View style={{
-                    backgroundColor: `${C.navyMid}80`,
+                    backgroundColor: "rgba(255,255,255,0.15)",
                     paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 8,
+                    paddingVertical: 5,
+                    borderRadius: 9,
                     alignSelf: "flex-start",
                   }}>
                     <Text style={{
-                      color: C.slate,
+                      color: "rgba(255,255,255,0.85)",
                       fontSize: 11,
                       fontWeight: "600",
                       letterSpacing: 0.1,
@@ -202,53 +225,56 @@ const Profile = () => {
               {/* Stats row */}
               <View style={{
                 flexDirection: "row",
-                backgroundColor: `${C.navyDeep}80`,
-                borderRadius: 18,
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: 20,
                 borderWidth: 1,
-                borderColor: C.navyBorder,
+                borderColor: "rgba(255,255,255,0.18)",
                 overflow: "hidden",
               }}>
-                <Metric icon={Briefcase} label="Tasks Posted" value="12" position="left" />
-                <View style={{ width: 1, backgroundColor: C.navyBorder }} />
-                <Metric icon={Star} label="Rating" value="4.8" position="mid" />
-                <View style={{ width: 1, backgroundColor: C.navyBorder }} />
-                <Metric icon={Wallet} label="Total Spent" value="$1,240" position="right" />
+                <Metric icon={Briefcase} label="Tasks Posted" value="12" />
+                <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
+                <Metric icon={Star} label="Rating" value="4.8" />
+                <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
+                <Metric icon={Wallet} label="Total Spent" value="$1,240" />
               </View>
             </View>
           </View>
         </View>
 
         {/* ── Primary CTA ── */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
           <Pressable
             onPress={() => router.push("/(root)/service")}
             style={({ pressed }) => ({
-              backgroundColor: pressed ? C.forest : C.fern,
+              backgroundColor: pressed ? C.navyDark : C.surfaceAlt,
               borderRadius: 18,
               paddingVertical: 17,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 9,
+              gap: 10,
               opacity: pressed ? 0.92 : 1,
-              ...shadow.glow,
+              borderWidth: 1.5,
+              borderColor: C.border,
+              ...shadow.sm,
             })}
           >
             <View style={{
-              width: 30,
-              height: 30,
+              width: 32,
+              height: 32,
               borderRadius: 10,
-              backgroundColor: "rgba(255,255,255,0.2)",
+              backgroundColor: C.fern,
               alignItems: "center",
               justifyContent: "center",
+              ...shadow.sm,
             }}>
               <PlusCircle size={17} color="white" />
             </View>
             <Text style={{
-              color: C.cloud,
+              color: C.textDark,
               fontWeight: "800",
               fontSize: 15,
-              letterSpacing: 0.2,
+              letterSpacing: 0.1,
             }}>
               Post a New Task
             </Text>
@@ -256,9 +282,9 @@ const Profile = () => {
         </View>
 
         {/* ── Account Options ── */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
           <Text style={{
-            color: C.slate,
+            color: C.textMuted,
             fontSize: 10,
             fontWeight: "700",
             letterSpacing: 1.8,
@@ -270,10 +296,10 @@ const Profile = () => {
           </Text>
 
           <View style={{
-            backgroundColor: C.navyCard,
+            backgroundColor: C.surface,
             borderRadius: 24,
-            borderWidth: 1,
-            borderColor: C.navyBorder,
+            borderWidth: 1.5,
+            borderColor: C.border,
             overflow: "hidden",
             ...shadow.card,
           }}>
@@ -299,7 +325,7 @@ const Profile = () => {
         </View>
 
         {/* ── Sign Out ── */}
-        <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
           <Pressable
             onPress={() => signOut()}
             style={({ pressed }) => ({
@@ -309,13 +335,22 @@ const Profile = () => {
               gap: 9,
               borderRadius: 18,
               paddingVertical: 16,
-              backgroundColor: pressed ? C.redBg : C.redBg,
+              backgroundColor: pressed ? "rgba(239,68,68,0.1)" : C.redBg,
               borderWidth: 1.5,
               borderColor: C.redBorder,
-              opacity: pressed ? 0.8 : 1,
+              opacity: pressed ? 0.85 : 1,
             })}
           >
-            <LogOut size={17} color={C.red} />
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: "rgba(239,68,68,0.1)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              <LogOut size={16} color={C.red} />
+            </View>
             <Text style={{
               color: C.red,
               fontWeight: "700",
@@ -340,12 +375,10 @@ const Metric = ({
   icon: Icon,
   label,
   value,
-  position,
 }: {
   icon: any
   label: string
   value: string
-  position: "left" | "mid" | "right"
 }) => (
   <View style={{
     flex: 1,
@@ -353,19 +386,7 @@ const Metric = ({
     paddingVertical: 18,
     paddingHorizontal: 8,
   }}>
-    <View style={{
-      width: 34,
-      height: 34,
-      borderRadius: 11,
-      backgroundColor: `${C.fern}18`,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: `${C.fern}25`,
-    }}>
-      <Icon size={16} color={C.fern} />
-    </View>
+    <Icon size={15} color="rgba(255,255,255,0.7)" style={{ marginBottom: 8 }} />
     <Text style={{
       color: C.cloud,
       fontWeight: "900",
@@ -376,7 +397,7 @@ const Metric = ({
       {value}
     </Text>
     <Text style={{
-      color: C.slate,
+      color: "rgba(255,255,255,0.6)",
       fontSize: 10,
       fontWeight: "600",
       letterSpacing: 0.2,
@@ -404,20 +425,20 @@ const ProfileRow = ({
       alignItems: "center",
       paddingHorizontal: 20,
       paddingVertical: 17,
-      backgroundColor: pressed ? `${C.navyMid}30` : "transparent",
+      backgroundColor: pressed ? C.surfaceAlt : "transparent",
     })}
   >
     {/* Icon block */}
     <View style={{
-      width: 40,
-      height: 40,
-      borderRadius: 13,
-      backgroundColor: `${C.fern}14`,
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      backgroundColor: C.fernSoft,
       alignItems: "center",
       justifyContent: "center",
       marginRight: 14,
       borderWidth: 1,
-      borderColor: `${C.fern}22`,
+      borderColor: C.border,
     }}>
       <Icon size={18} color={C.fern} />
     </View>
@@ -425,7 +446,7 @@ const ProfileRow = ({
     {/* Text */}
     <View style={{ flex: 1 }}>
       <Text style={{
-        color: C.cloud,
+        color: C.textDark,
         fontWeight: "700",
         fontSize: 14,
         letterSpacing: -0.2,
@@ -434,7 +455,7 @@ const ProfileRow = ({
         {title}
       </Text>
       <Text style={{
-        color: C.slate,
+        color: C.textMuted,
         fontSize: 12,
         fontWeight: "400",
         letterSpacing: 0.1,
@@ -448,11 +469,13 @@ const ProfileRow = ({
       width: 28,
       height: 28,
       borderRadius: 9,
-      backgroundColor: `${C.navyMid}60`,
+      backgroundColor: C.surfaceAlt,
+      borderWidth: 1,
+      borderColor: C.border,
       alignItems: "center",
       justifyContent: "center",
     }}>
-      <ChevronRight size={14} color={C.navyLight} />
+      <ChevronRight size={14} color={C.textMuted} />
     </View>
   </Pressable>
 )
@@ -460,7 +483,7 @@ const ProfileRow = ({
 const Divider = () => (
   <View style={{
     height: 1,
-    backgroundColor: C.navyBorder,
+    backgroundColor: C.borderSub,
     marginHorizontal: 20,
   }} />
 )

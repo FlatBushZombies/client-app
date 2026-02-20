@@ -28,34 +28,34 @@ interface FormData {
   documents: string
 }
 
-// ─── Design tokens — QuickHands navy palette ──────────────────────
+// ─── Design tokens — QuickHands green palette ─────────────────────
 const C = {
-  // Core brand
-  navy:        "#1E2A3A",   // primary — logo bg
-  navyDark:    "#152030",   // deepest navy — logo Q mark
-  navyMid:     "#243244",   // cards on dark bg
-  navyLight:   "#2D3F54",   // elevated surfaces
-  navyGhost:   "#354A62",   // borders / dividers on dark
+  // Core brand — rich sage / emerald greens
+  navy:        "#1A7F5A",   // primary — logo bg (deep emerald)
+  navyDark:    "#0F5C3F",   // deepest green — logo Q mark
+  navyMid:     "#1E8F65",   // cards on dark bg
+  navyLight:   "#239970",   // elevated surfaces
+  navyGhost:   "#2AAD7E",   // borders / dividers on dark
 
   // Entry screen (dark)
-  entryBg:     "#111820",   // deepest background
-  entryCard:   "#1A2535",
+  entryBg:     "#0A1F16",   // deepest background
+  entryCard:   "#0F2D1F",
 
   // Modal (light)
-  modalBg:     "#F2F4F7",
+  modalBg:     "#F0F7F4",
   surface:     "#FFFFFF",
-  border:      "#E2E6ED",
-  borderFocus: "#1E2A3A",
+  border:      "#CEEADE",
+  borderFocus: "#1A7F5A",
 
   // Text
   textLight:   "#FFFFFF",
-  textNavy:    "#1E2A3A",
-  textSub:     "#64748B",
-  textMuted:   "#94A3B8",
-  placeholder: "#A8B5C4",
+  textNavy:    "#0D3D27",
+  textSub:     "#3D7A5E",
+  textMuted:   "#6DAF92",
+  placeholder: "#93C9AE",
 
   // Tint
-  accentSoft:  "#EBF0F7",
+  accentSoft:  "#E6F5EE",
 
   white:       "#FFFFFF",
 }
@@ -202,7 +202,7 @@ export default function ServiceRequestScreen() {
   return (
     <SafeAreaView style={styles.root}>
 
-      {/* ── ENTRY SCREEN (dark navy) ── */}
+      {/* ── ENTRY SCREEN (dark green) ── */}
       <View style={styles.entryWrap}>
 
         {/* decorative ring accents */}
@@ -259,7 +259,7 @@ export default function ServiceRequestScreen() {
             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.iconBtn}>
               <Ionicons name="close" size={18} color={C.textNavy} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>New Service Request</Text>
+            <Text style={styles.modalTitle}>Post Job Request</Text>
             <View style={{ width: 36 }} />
           </View>
 
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
   },
   inputRowFocused: {
     borderColor: C.navy,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F5FBF8",
   },
   input: {
     flex: 1,
