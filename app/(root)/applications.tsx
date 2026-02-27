@@ -77,17 +77,30 @@ const ApplicationsScreen = () => {
       console.log('[Applications] Response status:', response.status)
       
       const data = await response.json()
-      console.log('[Applications] Response:', {
+      console.log('[Applications] Full Response:', JSON.stringify(data, null, 2))
+      console.log('[Applications] Response details:', {
         success: data.success,
-        count: data.data?.length || 0
+        dataExists: !!data.data,
+        isArray: Array.isArray(data.data),
+        count: data.data?.length || 0,
+        jobs: data.data?.map((j: any) => ({
+          id: j.id,
+          serviceType: j.serviceType,
+          applicationsCount: j.applications?.length || 0
+        })) || []
       })
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to fetch applications')
       }
 
-      setJobs(data.data || [])
-      console.log('[Applications] Loaded', data.data?.length || 0, 'jobs with applications')
+      const jobsData = data.data || []
+      setJobs(jobsData)
+      console.log('[Applications] Set jobs:', jobsData.length, 'jobs')
+      
+      if (jobsData.length > 0) {
+        console.log('[Applications] First job sample:', JSON.stringify(jobsData[0], null, 2))
+      }
     } catch (error) {
       console.error('[Applications] Error:', error)
       setError(error instanceof Error ? error.message : 'Failed to load applications')
@@ -522,10 +535,20 @@ const ApplicationsScreen = () => {
               textAlign: "center",
               lineHeight: 22,
               paddingHorizontal: 20,
+              marginBottom: 16,
             }}
           >
             When freelancers apply to your jobs,{"\n"}you'll see them here within 10 seconds
           </Text>
+          {__DEV__ && (
+            <View style={{ backgroundColor: "#FEF3C7", padding: 12, borderRadius: 8, marginTop: 16, width: "100%" }}>
+              <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", marginBottom: 4 }}>Debug Info:</Text>
+              <Text style={{ fontSize: 11, color: "#78350F" }}>User ID: {user?.id}</Text>
+              <Text style={{ fontSize: 11, color: "#78350F" }}>Loading: {loading.toString()}</Text>
+              <Text style={{ fontSize: 11, color: "#78350F" }}>Jobs Count: {jobs.length}</Text>
+              <Text style={{ fontSize: 11, color: "#78350F" }}>Has Error: {(!!error).toString()}</Text>
+            </View>
+          )}
         </View>
       ) : (
         <FlatList

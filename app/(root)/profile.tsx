@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  ActivityIndicator,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useUser, useAuth } from "@clerk/clerk-expo"
@@ -81,6 +82,72 @@ const shadow = {
 const Profile = () => {
   const { user } = useUser()
   const { signOut } = useAuth()
+  const [stats, setStats] = useState({ tasksPosted: 0, avgRating: 0, totalSpent: 0 })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.id) return
+      
+      try {
+        const token = await (user as any).getIdToken?.()
+        if (!token) {
+          setLoading(false)
+          return
+        }
+
+        // Fetch jobs posted by this client
+        const jobsResponse = await fetch(
+          `https://quickhands-api.vercel.app/api/jobs?clerkId=${user.id}`
+        )
+        const jobsData = await jobsResponse.json()
+        const tasksPosted = jobsData.success ? jobsData.data.length : 0
+
+        // Fetch applications to calculate ratings and spending
+        const appsResponse = await fetch(
+          'https://quickhands-api.vercel.app/api/applications/client',
+          {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }
+        )
+        const appsData = await appsResponse.json()
+        
+        let totalSpent = 0
+        let totalRatings = 0
+        let ratingCount = 0
+        
+        if (appsData.success && Array.isArray(appsData.data)) {
+          appsData.data.forEach((job: any) => {
+            const acceptedApps = job.applications?.filter((app: any) => app.status === 'accepted') || []
+            acceptedApps.forEach((app: any) => {
+              // Sum up quotations for total spent
+              if (app.quotation) {
+                const amount = parseFloat(app.quotation.replace(/[^0-9.-]+/g, ''))
+                if (!isNaN(amount)) totalSpent += amount
+              }
+              // Average ratings (if we had them)
+              if (app.rating) {
+                totalRatings += app.rating
+                ratingCount++
+              }
+            })
+          })
+        }
+
+        setStats({
+          tasksPosted,
+          avgRating: ratingCount > 0 ? totalRatings / ratingCount : 0,
+          totalSpent,
+        })
+      } catch (error) {
+        console.error('Error fetching profile stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [user?.id])
 
   if (!user) return null
 
@@ -231,11 +298,19 @@ const Profile = () => {
                 borderColor: "rgba(255,255,255,0.18)",
                 overflow: "hidden",
               }}>
-                <Metric icon={Briefcase} label="Tasks Posted" value="12" />
-                <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
-                <Metric icon={Star} label="Rating" value="4.8" />
-                <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
-                <Metric icon={Wallet} label="Total Spent" value="$1,240" />
+                {loading ? (
+                  <View style={{ flex: 1, paddingVertical: 18, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+                  </View>
+                ) : (
+                  <>
+                    <Metric icon={Briefcase} label="Tasks Posted" value={stats.tasksPosted > 0 ? stats.tasksPosted.toString() : "0"} />
+                    <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
+                    <Metric icon={Star} label="Rating" value={stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "N/A"} />
+                    <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.15)" }} />
+                    <Metric icon={Wallet} label="Total Spent" value={stats.totalSpent > 0 ? `$${stats.totalSpent.toLocaleString()}` : "$0"} />
+                  </>
+                )}
               </View>
             </View>
           </View>

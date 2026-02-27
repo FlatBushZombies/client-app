@@ -153,7 +153,7 @@ export default function Layout() {
         name="applications"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={RocketLaunchIcon} focused={focused} label="Apply" />
+            <TabIcon Icon={RocketLaunchIcon} focused={focused} label="My Applications" />
           ),
         }}
       />

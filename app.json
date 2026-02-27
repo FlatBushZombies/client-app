@@ -27,6 +27,12 @@
       "bundler": "metro"
     },
     "plugins": [
+        [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow QuickHands to access your location to show nearby services."
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -39,7 +45,8 @@
             "backgroundColor": "#111827"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

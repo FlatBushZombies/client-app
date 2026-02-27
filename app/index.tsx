@@ -1,23 +1,10 @@
 "use client"
 
 import { useEffect } from "react"
-import { Text, View, TouchableOpacity, ActivityIndicator, Image, StyleSheet, Platform } from "react-native"
+import { Text, View, TouchableOpacity, ActivityIndicator, Image, Platform } from "react-native"
 import { router } from "expo-router"
 import { useAuth } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
-
-// ─── Design tokens ────────────────────────────────────────────────
-const C = {
-  bg:          "#FFFFFF",
-  navy:        "#1A7A4A",
-  navyDark:    "#145E38",
-  textPrimary: "#111827",
-  textSub:     "#6B7280",
-  textMuted:   "#9CA3AF",
-  border:      "#F0F2F5",
-  borderMid:   "#E5E7EB",
-  white:       "#FFFFFF",
-}
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -42,304 +29,116 @@ export default function Index() {
 
   if (!isLoaded) {
     return (
-      <View style={styles.loadingRoot}>
-        <View style={styles.loadingLogoMark}>
-          <Text style={styles.loadingQ}>Q</Text>
+      <View className="flex-1 bg-white items-center justify-center">
+        <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
+          <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
         </View>
-        <ActivityIndicator size="small" color={C.navy} style={{ marginTop: 24 }} />
+        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: 24 }} />
       </View>
     )
   }
 
   if (isSignedIn) {
     return (
-      <View style={styles.loadingRoot}>
-        <View style={styles.loadingLogoMark}>
-          <Text style={styles.loadingQ}>Q</Text>
+      <View className="flex-1 bg-white items-center justify-center">
+        <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
+          <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
         </View>
-        <ActivityIndicator size="small" color={C.navy} style={{ marginTop: 24 }} />
-        <Text style={styles.loadingText}>Redirecting…</Text>
+        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: 24 }} />
+        <Text className="mt-3 text-sm text-gray-400 tracking-wide font-jakarta">Redirecting…</Text>
       </View>
     )
   }
 
   return (
-    <View style={styles.root}>
+    <View className="flex-1 bg-white overflow-hidden">
 
       {/* ── decorative top corner rings ── */}
-      <View style={styles.ringTopRight} />
-      <View style={styles.ringTopRight2} />
+      <View className="absolute w-[300px] h-[300px] rounded-full border border-gray-200"
+        style={{ top: -120, right: -100 }}
+      />
+      <View className="absolute w-[200px] h-[200px] rounded-full border border-gray-100"
+        style={{ top: -60, right: -40 }}
+      />
 
-      <View style={styles.container}>
+      <View
+        className="flex-1 px-7"
+        style={{
+          paddingTop: Platform.OS === "ios" ? 60 : 40,
+          paddingBottom: Platform.OS === "ios" ? 40 : 24,
+        }}
+      >
 
         {/* ── Centre: logo + headline ── */}
-        <View style={styles.centreWrap}>
+        <View className="flex-1 justify-center items-start">
 
           {/* logo */}
-          <View style={styles.logoShadowWrap}>
+          <View className="rounded-3xl mb-5 shadow-lg">
             <Image
               source={IMAGES.logo}
-              style={styles.logoImage}
+              className="w-22 h-22 rounded-3xl"
+              style={{ width: 88, height: 88, borderRadius: 24 }}
               resizeMode="contain"
             />
           </View>
 
           {/* wordmark */}
-          <Text style={styles.wordmark}>QuickHands</Text>
+          <Text className="text-xs font-bold text-gray-400 tracking-[3px] uppercase mb-5 font-jakarta-bold">
+            QuickHands
+          </Text>
 
           {/* divider */}
-          <View style={styles.divider} />
+          <View className="w-8 h-0.5 rounded-sm bg-green-700 mb-6" />
 
           {/* headline */}
-          <Text style={styles.headline}>
+          <Text className="text-[42px] font-extrabold text-gray-900 leading-[52px] tracking-tighter mb-4 font-jakarta-bold">
             Find specialists{"\n"}to help with{"\n"}your task
           </Text>
 
           {/* subtitle */}
-          <Text style={styles.subtitle}>
+          <Text className="text-base text-gray-500 leading-6 tracking-wide font-jakarta">
             Connect with top-tier specialists{"\n"}to get the job done.
           </Text>
         </View>
 
         {/* ── Bottom: CTAs ── */}
-        <View style={styles.ctaWrap}>
+        <View>
 
           {/* primary CTA */}
           <TouchableOpacity
-            style={styles.primaryBtn}
+            className="bg-green-700 rounded-[18px] py-[18px] pl-6 pr-[18px] flex-row items-center justify-between mb-4 shadow-lg"
             onPress={handleGetStarted}
             activeOpacity={0.88}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text className="text-white text-sm font-bold tracking-wide flex-1 font-jakarta-bold">
               {isSignedIn ? "Continue to Home" : "I want to look for services"}
             </Text>
-            <View style={styles.primaryArrow}>
-              <Text style={styles.primaryArrowText}>→</Text>
+            <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center ml-3">
+              <Text className="text-white text-base">→</Text>
             </View>
           </TouchableOpacity>
 
           {/* secondary CTA */}
           <TouchableOpacity
-            style={styles.secondaryBtn}
+            className="py-4 items-center border-[1.5px] border-gray-200 rounded-[18px] mb-6"
             onPress={handleBrowseServices}
             activeOpacity={0.65}
           >
-            <Text style={styles.secondaryBtnText}>I want to offer services</Text>
+            <Text className="text-sm font-semibold text-gray-500 tracking-wide font-jakarta-semibold">
+              I want to offer services
+            </Text>
           </TouchableOpacity>
 
           {/* trust indicator */}
-          <View style={styles.trustRow}>
-            <View style={styles.trustDot} />
-            <Text style={styles.trustText}>Access top-tier specialists</Text>
+          <View className="flex-row items-center justify-center gap-2">
+            <View className="w-1.5 h-1.5 rounded-full bg-green-700 opacity-40" />
+            <Text className="text-xs text-gray-400 tracking-wide font-jakarta">
+              Access top-tier specialists
+            </Text>
           </View>
-        </View>
 
+        </View>
       </View>
     </View>
   )
 }
-
-// ─── Styles ───────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-
-  // ── Loading ───────────────────────────────────────────────────
-  loadingRoot: {
-    flex: 1,
-    backgroundColor: C.bg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingLogoMark: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: C.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  loadingQ: {
-    fontSize: 30,
-    fontWeight: "900",
-    color: C.navyDark,
-    lineHeight: 36,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: C.textMuted,
-    letterSpacing: 0.2,
-  },
-
-  // ── Root ──────────────────────────────────────────────────────
-  root: {
-    flex: 1,
-    backgroundColor: C.bg,
-    overflow: "hidden",
-  },
-
-  // ── Decorative rings (top-right corner) ───────────────────────
-  ringTopRight: {
-    position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    top: -120,
-    right: -100,
-  },
-  ringTopRight2: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: "#EDEEF2",
-    top: -60,
-    right: -40,
-  },
-
-  // ── Layout ────────────────────────────────────────────────────
-  container: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
-  },
-
-  // ── Centre block ──────────────────────────────────────────────
-  centreWrap: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "flex-start",
-  },
-
-  logoShadowWrap: {
-    borderRadius: 24,
-    marginBottom: 20,
-    shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  logoImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-  },
-
-  wordmark: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.textMuted,
-    letterSpacing: 3,
-    textTransform: "uppercase",
-    marginBottom: 20,
-  },
-
-  divider: {
-    width: 32,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: C.navy,
-    marginBottom: 24,
-  },
-
-  headline: {
-    fontSize: 42,
-    fontWeight: "800",
-    color: C.textPrimary,
-    lineHeight: 52,
-    letterSpacing: -1.3,
-    marginBottom: 18,
-  },
-
-  subtitle: {
-    fontSize: 15,
-    color: C.textSub,
-    lineHeight: 24,
-    letterSpacing: 0.1,
-  },
-
-  // ── CTA block ─────────────────────────────────────────────────
-  ctaWrap: {
-    gap: 0,
-  },
-
-  primaryBtn: {
-    backgroundColor: C.navy,
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingLeft: 24,
-    paddingRight: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    elevation: 8,
-    marginBottom: 16,
-  },
-  primaryBtnText: {
-    color: C.white,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.1,
-    flex: 1,
-  },
-  primaryArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 12,
-  },
-  primaryArrowText: {
-    color: C.white,
-    fontSize: 16,
-  },
-
-  secondaryBtn: {
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: C.borderMid,
-    borderRadius: 18,
-    marginBottom: 24,
-  },
-  secondaryBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: C.textSub,
-    letterSpacing: 0.1,
-  },
-
-  trustRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  trustDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: C.navy,
-    opacity: 0.4,
-  },
-  trustText: {
-    fontSize: 12,
-    color: C.textMuted,
-    letterSpacing: 0.3,
-  },
-})

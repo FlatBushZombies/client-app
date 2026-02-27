@@ -4,6 +4,7 @@ import { IMAGES } from "@/constants"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
+import * as Location from "expo-location"
 import { router } from "expo-router"
 import { useEffect, useState } from "react"
 import { useSocket } from "@/contexts/SocketContext"
@@ -60,10 +61,11 @@ const HomeScreen = () => {
   const { isSignedIn } = useAuth()
   const { unreadCount } = useSocket()
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [city, setCity] = useState<string | null>(null)
+  const [locationLoading, setLocationLoading] = useState(true)
 
   useEffect(() => {
     if (!isLoaded) return
-
     if (!isSignedIn) {
       router.replace("/")
     } else {
@@ -71,89 +73,93 @@ const HomeScreen = () => {
     }
   }, [isLoaded, isSignedIn])
 
+  useEffect(() => {
+    const fetchLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync()
+        if (status !== "granted") {
+          setCity(null)
+          setLocationLoading(false)
+          return
+        }
+
+        const coords = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        })
+
+        const [result] = await Location.reverseGeocodeAsync({
+          latitude: coords.coords.latitude,
+          longitude: coords.coords.longitude,
+        })
+
+        setCity(result?.city || result?.district || result?.subregion || null)
+      } catch {
+        setCity(null)
+      } finally {
+        setLocationLoading(false)
+      }
+    }
+
+    fetchLocation()
+  }, [])
+
+  const locationLabel = locationLoading
+    ? "Detecting location…"
+    : city ?? "Location unavailable"
+
+  const locationDetected = !locationLoading && !!city
+
   if (checkingAuth) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FAFAFA" }}>
-        <Text style={{ color: "#6B7280", fontSize: 16 }}>Checking session...</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-gray-50">
+        <Text className="text-gray-500 text-base font-jakarta">Checking session...</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
+    <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {/* Header with greeting and location */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            backgroundColor: "#FFFFFF",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+
+        {/* ── Header ── */}
+        <View className="flex-row items-center justify-between px-5 py-4 bg-white">
+          <View className="flex-row items-center">
             <Image
               source={{
                 uri:
                   user?.imageUrl ||
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces",
               }}
-              style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
+              className="w-12 h-12 rounded-full mr-3"
             />
             <View>
-              <Text style={{ color: "#9CA3AF", fontSize: 13 }}>Good day,</Text>
-              <Text style={{ color: "#111827", fontSize: 18, fontWeight: "700" }}>
+              <Text className="text-gray-400 text-xs font-jakarta">Good day,</Text>
+              <Text className="text-gray-900 text-lg font-bold font-jakarta-bold">
                 {user?.fullName || "User"}
               </Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 6,
-                }}
-              >
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text
-                  style={{
-                    marginLeft: 4,
-                    color: "#6B7280",
-                    fontSize: 12,
-                  }}
-                >
-                  Set your location
+              <View className="flex-row items-center mt-1.5">
+                <Ionicons
+                  name="location-outline"
+                  size={14}
+                  color={locationDetected ? "#15803d" : "#9CA3AF"}
+                />
+                <Text className={`ml-1 text-xs font-jakarta ${locationDetected ? "text-green-700" : "text-gray-500"}`}>
+                  {locationLabel}
                 </Text>
               </View>
             </View>
           </View>
+
           <TouchableOpacity
             onPress={() => router.push("/(root)/applications")}
-            style={{
-              backgroundColor: "#F3F4F6",
-              borderRadius: 12,
-              padding: 10,
-            }}
+            className="bg-gray-100 rounded-xl p-2.5"
           >
             <Ionicons name="notifications-outline" size={22} color="#374151" />
             {unreadCount > 0 && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  minWidth: 18,
-                  height: 18,
-                  backgroundColor: "#EF4444",
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 4,
-                }}
-              >
-                <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "700" }}>
+              <View className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full items-center justify-center px-1">
+                <Text className="text-white text-[10px] font-bold font-jakarta-bold">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </Text>
               </View>
@@ -161,126 +167,46 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Search bar */}
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            backgroundColor: "#FFFFFF",
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "#F9FAFB",
-              borderRadius: 16,
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              borderWidth: 1,
-              borderColor: "#E5E7EB",
-            }}
-          >
+        {/* ── Search bar ── */}
+        <View className="px-5 py-4 bg-white">
+          <View className="flex-row items-center bg-gray-50 rounded-2xl px-4 py-3.5 border border-gray-200">
             <Ionicons name="search-outline" size={20} color="#9CA3AF" />
             <TextInput
               placeholder="Search for a specialist or service"
-              style={{
-                flex: 1,
-                marginLeft: 12,
-                color: "#374151",
-                fontSize: 16,
-              }}
+              className="flex-1 ml-3 text-gray-700 text-base font-jakarta"
               placeholderTextColor="#9CA3AF"
             />
           </View>
 
-          {/* Popular searches chips */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingTop: 12,
-            }}
+            contentContainerStyle={{ paddingTop: 12 }}
           >
             {popularSearches.map((term) => (
               <TouchableOpacity
                 key={term}
                 activeOpacity={0.8}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                  backgroundColor: "#F3F4F6",
-                  borderWidth: 1,
-                  borderColor: "#E5E7EB",
-                  marginRight: 8,
-                }}
+                className="px-3.5 py-2 rounded-full bg-gray-100 border border-gray-200 mr-2"
               >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: "#4B5563",
-                    fontWeight: "500",
-                  }}
-                >
-                  {term}
-                </Text>
+                <Text className="text-xs text-gray-600 font-medium font-jakarta-medium">{term}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* Hero Illustration */}
-
-        {/* Main content block similar to reference design */}
+        {/* ── Main content block ── */}
         <View
-          style={{
-            marginTop: 24,
-            marginHorizontal: 16,
-            backgroundColor: "#FFFFFF",
-            borderRadius: 24,
-            paddingTop: 20,
-            paddingBottom: 24,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
+          className="mt-6 mx-4 bg-white rounded-3xl pt-5 pb-6"
+          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
         >
-          {/* Popular Services Section */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              marginBottom: 16,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "700",
-                color: "#111827",
-              }}
-            >
-              Popular Services
-            </Text>
+          <View className="flex-row justify-between items-center px-4 mb-4">
+            <Text className="text-xl font-bold text-gray-900 font-jakarta-bold">Popular Services</Text>
             <TouchableOpacity>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#0EA5E9",
-                }}
-              >
-                View all
-              </Text>
+              <Text className="text-sm font-semibold text-sky-500 font-jakarta-semibold">View all</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Horizontal Scrolling Cards */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -290,84 +216,28 @@ const HomeScreen = () => {
               <TouchableOpacity
                 key={provider.id}
                 activeOpacity={0.9}
-                style={{
-                  width: CARD_WIDTH,
-                  marginHorizontal: 4,
-                  borderRadius: 20,
-                  overflow: "hidden",
-                  backgroundColor: "#FFFFFF",
-                }}
+                style={{ width: CARD_WIDTH }}
+                className="mx-1 rounded-[20px] overflow-hidden bg-white"
               >
-                {/* Card Background with Gradient */}
                 <LinearGradient
                   colors={[provider.bgColor[0], provider.bgColor[1]]}
-                  style={{
-                    height: 200,
-                    justifyContent: "flex-end",
-                  }}
+                  style={{ height: 200, justifyContent: "flex-end" }}
                 >
-                  {/* Provider Count Badge */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: 12,
-                      left: 12,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      backgroundColor: "rgba(255,255,255,0.9)",
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 20,
-                    }}
-                  >
+                  <View className="absolute top-3 left-3 flex-row items-center bg-white/90 px-2.5 py-1.5 rounded-full">
                     <Ionicons name="people" size={14} color="#374151" />
-                    <Text
-                      style={{
-                        marginLeft: 4,
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
+                    <Text className="ml-1 text-xs font-semibold text-gray-700 font-jakarta-semibold">
                       {provider.providerCount.toLocaleString()}
                     </Text>
                   </View>
-
-                  {/* Professional Image */}
                   <Image
                     source={{ uri: provider.image }}
-                    style={{
-                      width: "100%",
-                      height: 180,
-                      resizeMode: "cover",
-                    }}
+                    style={{ width: "100%", height: 180, resizeMode: "cover" }}
                   />
                 </LinearGradient>
 
-                {/* Title Section */}
-                <View
-                  style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    backgroundColor: "#FFFFFF",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: "#111827",
-                    }}
-                  >
-                    {provider.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: "#6B7280",
-                      marginTop: 2,
-                    }}
-                  >
+                <View className="py-3.5 px-4 bg-white">
+                  <Text className="text-base font-bold text-gray-900 font-jakarta-bold">{provider.title}</Text>
+                  <Text className="text-xs text-gray-500 mt-0.5 font-jakarta">
                     {provider.providerCount} providers available
                   </Text>
                 </View>
@@ -375,275 +245,87 @@ const HomeScreen = () => {
             ))}
           </ScrollView>
 
-          {/* Divider between sections */}
-          <View
-            style={{
-              height: 1,
-              backgroundColor: "#F3F4F6",
-              marginTop: 20,
-              marginHorizontal: 16,
-            }}
-          />
+          <View className="h-px bg-gray-100 mt-5 mx-4" />
 
-          {/* Quick Actions as card grid */}
-          <View
-            style={{
-              marginTop: 20,
-              paddingHorizontal: 16,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: "#111827",
-                marginBottom: 12,
-              }}
-            >
-              How it works
-            </Text>
+          <View className="mt-5 px-4">
+            <Text className="text-lg font-bold text-gray-900 mb-3 font-jakarta-bold">How it works</Text>
 
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "space-between",
-                rowGap: 12,
-              }}
-            >
-              <View
-                style={{
-                  width: "48%",
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: 16,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: "#E5E7EB",
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    backgroundColor: "#DBEAFE",
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 10,
-                  }}
-                >
+            <View className="flex-row flex-wrap justify-between" style={{ rowGap: 12 }}>
+              <View className="w-[48%] bg-gray-50 rounded-2xl p-3.5 border border-gray-200">
+                <View className="w-10 h-10 bg-blue-100 rounded-xl items-center justify-center mb-2.5">
                   <Ionicons name="search" size={20} color="#2563EB" />
                 </View>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111827",
-                  }}
-                >
-                  Find a Pro
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: "#6B7280",
-                    marginTop: 4,
-                  }}
-                >
-                  Search verified professionals
-                </Text>
+                <Text className="text-sm font-semibold text-gray-900 font-jakarta-semibold">Find a Pro</Text>
+                <Text className="text-xs text-gray-500 mt-1 font-jakarta">Search verified professionals</Text>
               </View>
 
-              <View
-                style={{
-                  width: "48%",
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: 16,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: "#E5E7EB",
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    backgroundColor: "#FEF3C7",
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 10,
-                  }}
-                >
+              <View className="w-[48%] bg-gray-50 rounded-2xl p-3.5 border border-gray-200">
+                <View className="w-10 h-10 bg-amber-100 rounded-xl items-center justify-center mb-2.5">
                   <Ionicons name="star" size={20} color="#F59E0B" />
                 </View>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111827",
-                  }}
-                >
-                  Read Reviews
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: "#6B7280",
-                    marginTop: 4,
-                  }}
-                >
-                  Real ratings from customers
-                </Text>
+                <Text className="text-sm font-semibold text-gray-900 font-jakarta-semibold">Read Reviews</Text>
+                <Text className="text-xs text-gray-500 mt-1 font-jakarta">Real ratings from customers</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Feedback and Support Section */}
-        <View
-          style={{
-            marginTop: 24,
-            marginHorizontal: 16,
-            marginBottom: 16,
-          }}
-        >
-          {/* Two side-by-side cards */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
-            {/* How do you like the app? */}
+        {/* ── Feedback and Support ── */}
+        <View className="mt-6 mx-4 mb-4">
+          <View className="flex-row justify-between mb-3">
             <TouchableOpacity
               activeOpacity={0.8}
-              style={{
-                flex: 1,
-                backgroundColor: "#F9FAFB",
-                borderRadius: 16,
-                padding: 16,
-                marginRight: 6,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                minHeight: 100,
-              }}
+              className="flex-1 bg-gray-50 rounded-2xl p-4 mr-1.5 border border-gray-200 min-h-[100px]"
             >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#111827",
-                  marginBottom: 8,
-                  lineHeight: 18,
-                }}
-              >
+              <Text className="text-sm font-semibold text-gray-900 mb-2 leading-[18px] font-jakarta-semibold">
                 How do you like the app?
               </Text>
-              <View style={{ alignItems: "flex-end", marginTop: "auto" }}>
+              <View className="items-end mt-auto">
                 <Ionicons name="clipboard-outline" size={32} color="#6B7280" />
               </View>
             </TouchableOpacity>
 
-            {/* Contact Support */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={{
-                flex: 1,
-                backgroundColor: "#F9FAFB",
-                borderRadius: 16,
-                padding: 16,
-                marginLeft: 6,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                minHeight: 100,
-              }}
+              className="flex-1 bg-gray-50 rounded-2xl p-4 ml-1.5 border border-gray-200 min-h-[100px]"
             >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: "#111827",
-                  marginBottom: 8,
-                  lineHeight: 18,
-                }}
-              >
+              <Text className="text-sm font-semibold text-gray-900 mb-2 leading-[18px] font-jakarta-semibold">
                 Contact Support
               </Text>
-              <View style={{ alignItems: "flex-end", marginTop: "auto" }}>
+              <View className="items-end mt-auto">
                 <Ionicons name="mail-outline" size={32} color="#6B7280" />
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* Are you a specialist? Block */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={{
-              backgroundColor: "#F9FAFB",
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#E5E7EB",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+            className="bg-gray-50 rounded-2xl p-4 border border-gray-200 flex-row items-center justify-between"
           >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "700",
-                  color: "#111827",
-                  marginBottom: 6,
-                }}
-              >
+            <View className="flex-1">
+              <Text className="text-base font-bold text-gray-900 mb-1.5 font-jakarta-bold">
                 Are you a specialist?
               </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: "#6B7280",
-                  lineHeight: 18,
-                }}
-              >
+              <Text className="text-xs text-gray-500 leading-[18px] font-jakarta">
                 Find clients and earn with QuickHands
               </Text>
             </View>
-            <View style={{ marginLeft: 12, flexDirection: "row", alignItems: "center" }}>
-              
+            <View className="ml-3 flex-row items-center">
               <Ionicons name="person-outline" size={24} color="#9CA3AF" style={{ marginLeft: -8 }} />
             </View>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
 
-      {/* Bottom CTA Button */}
-      <View style={{
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: "#FFFFFF",
-        borderTopWidth: 1,
-        borderTopColor: "#E5E7EB",
-      }}>
+      {/* ── Bottom CTA ── */}
+      <View className="px-5 py-4 bg-white border-t border-gray-200">
         <TouchableOpacity
           onPress={() => router.push("/(root)/service")}
-          style={{
-          backgroundColor: "#111827",
-          borderRadius: 16,
-          paddingVertical: 16,
-          alignItems: "center",
-          shadowColor: "#111827",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 4,
-        }}>
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>
-            Post Your Task
-          </Text>
+          className="bg-gray-900 rounded-2xl py-4 items-center"
+          style={{ shadowColor: "#111827", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }}
+        >
+          <Text className="text-white text-base font-bold font-jakarta-bold">Post Your Task</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
