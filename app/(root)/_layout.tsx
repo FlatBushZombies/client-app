@@ -1,7 +1,21 @@
 import { Tabs } from "expo-router"
 import { Text, View, Platform } from "react-native"
-import { BriefcaseIcon, ChatBubbleLeftRightIcon, HomeIcon, UserIcon, RocketLaunchIcon } from "react-native-heroicons/outline"
+import {
+  BriefcaseIcon,
+  ChatBubbleLeftRightIcon,
+  HomeIcon,
+  UserIcon,
+  RocketLaunchIcon,
+} from "react-native-heroicons/outline"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+// Fix #4: derive height from content rather than magic number
+const ICON_SIZE   = 20
+const PILL_H      = 32   // h-8
+const LABEL_H     = 12   // ~9.5px font + line height
+const V_PADDING   = 10   // breathing room above icon + below label
+const TAB_CONTENT = PILL_H + 4 + LABEL_H  // pill + gap-1 + label
+const TAB_BAR_HEIGHT = TAB_CONTENT + V_PADDING * 2  // = 68
 
 const TabIcon = ({
   Icon,
@@ -13,71 +27,51 @@ const TabIcon = ({
   label: string
 }) => {
   return (
-    <View style={{
-      alignItems: "center",
-      justifyContent: "center",
-      width: 64,
-      gap: 4,
-    }}>
+    <View className="items-center justify-center w-16 gap-1">
+
       {/* Icon pill */}
       <View
+        className={`flex-row items-center justify-center rounded-[14px] w-11 h-8 ${
+          focused ? "bg-green-700" : "bg-transparent"
+        }`}
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 14,
-          width: 44,
-          height: 32,
-          backgroundColor: focused ? "#1A7A4A" : "transparent",
-          // Premium glow effect when focused
-          shadowColor: focused ? "#1A7A4A" : "transparent",
+          // Fix #1: glow only when focused, no shadow on unfocused
+          shadowColor: "#1A7A4A",
           shadowOffset: { width: 0, height: 3 },
           shadowOpacity: focused ? 0.35 : 0,
           shadowRadius: 8,
           elevation: focused ? 4 : 0,
         }}
       >
-        {/* Subtle inner highlight for depth */}
         {focused && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "50%",
-              borderTopLeftRadius: 14,
-              borderTopRightRadius: 14,
-              backgroundColor: "rgba(255,255,255,0.12)",
-            }}
-          />
+          <View className="absolute top-0 left-0 right-0 h-1/2 rounded-tl-[14px] rounded-tr-[14px] bg-white/10" />
         )}
         <Icon
-          size={20}
+          size={ICON_SIZE}
           color={focused ? "#FFFFFF" : "#9CA3AF"}
           strokeWidth={focused ? 2.5 : 1.8}
         />
       </View>
 
-      {/* Label */}
+      {/* Fix #3: use registered Jakarta font families instead of font-bold/font-medium */}
+      {/* Fix #5: "Tasks" instead of "My Tasks" to fit w-16 without truncation */}
       <Text
         numberOfLines={1}
-        style={{
-          fontSize: 9.5,
-          fontWeight: focused ? "700" : "500",
-          letterSpacing: 0.2,
-          color: focused ? "#1A7A4A" : "#9CA3AF",
-        }}
+        className={`text-[9.5px] tracking-[0.2px] ${
+          focused
+            ? "font-jakarta-bold text-green-700"
+            : "font-jakarta-medium text-gray-400"
+        }`}
       >
         {label}
       </Text>
+
     </View>
   )
 }
 
 export default function Layout() {
   const insets = useSafeAreaInsets()
-  const TAB_BAR_HEIGHT = 60
 
   return (
     <Tabs
@@ -87,29 +81,32 @@ export default function Layout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
-          borderTopWidth: 0,
           height: TAB_BAR_HEIGHT + insets.bottom,
           paddingBottom: insets.bottom,
           paddingTop: 0,
           elevation: 0,
-          // Crisp top border + premium shadow
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          // Hairline separator
-          borderTopColor: "#F0F0F0",
+          // Fix #1: consistent top separator + upward shadow on both platforms
           ...Platform.select({
-            android: { borderTopWidth: 0.5, borderTopColor: "#E5E7EB" },
+            ios: {
+              borderTopWidth: 0.5,
+              borderTopColor: "#E5E7EB",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.06,
+              shadowRadius: 12,
+            },
+            android: {
+              borderTopWidth: 0.5,
+              borderTopColor: "#E5E7EB",
+            },
           }),
         },
+        // Fix #2: remove redundant justifyContent/alignItems that conflict with
+        // Expo Router's own tab item centering logic
         tabBarItemStyle: {
-          // Each item fills the height and centers the icon+label vertically
           height: TAB_BAR_HEIGHT,
           paddingTop: 0,
           paddingBottom: 0,
-          justifyContent: "center",
-          alignItems: "center",
         },
       }}
     >
@@ -149,12 +146,20 @@ export default function Layout() {
         }}
       />
 
+      {/* Fix #5: label shortened from "My Tasks" → "Tasks" to fit w-16 */}
       <Tabs.Screen
         name="applications"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={RocketLaunchIcon} focused={focused} label="My Applications" />
+            <TabIcon Icon={RocketLaunchIcon} focused={focused} label="Tasks" />
           ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

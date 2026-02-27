@@ -63,6 +63,9 @@ const HomeScreen = () => {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [city, setCity] = useState<string | null>(null)
   const [locationLoading, setLocationLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -102,6 +105,39 @@ const HomeScreen = () => {
 
     fetchLocation()
   }, [])
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query)
+    
+    if (!query.trim()) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const response = await fetch(
+        `https://quickhands-api.vercel.app/api/jobs/search?q=${encodeURIComponent(query)}`
+      )
+      const data = await response.json()
+      
+      if (data.success && Array.isArray(data.data)) {
+        setSearchResults(data.data)
+      } else {
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleSearchTermClick = (term: string) => {
+    handleSearch(term)
+  }
 
   const locationLabel = locationLoading
     ? "Detecting location…"
@@ -153,7 +189,7 @@ const HomeScreen = () => {
           </View>
 
           <TouchableOpacity
-            onPress={() => router.push("/(root)/applications")}
+            onPress={() => router.push("/(root)/notifications")}
             className="bg-gray-100 rounded-xl p-2.5"
           >
             <Ionicons name="notifications-outline" size={22} color="#374151" />
@@ -172,10 +208,22 @@ const HomeScreen = () => {
           <View className="flex-row items-center bg-gray-50 rounded-2xl px-4 py-3.5 border border-gray-200">
             <Ionicons name="search-outline" size={20} color="#9CA3AF" />
             <TextInput
+              value={searchQuery}
+              onChangeText={handleSearch}
               placeholder="Search for a specialist or service"
               className="flex-1 ml-3 text-gray-700 text-base font-jakarta"
               placeholderTextColor="#9CA3AF"
             />
+            {isSearching && (
+              <View className="ml-2">
+                <Text className="text-xs text-gray-500">Searching...</Text>
+              </View>
+            )}
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch('')} className="ml-2">
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView
@@ -187,12 +235,50 @@ const HomeScreen = () => {
               <TouchableOpacity
                 key={term}
                 activeOpacity={0.8}
+                onPress={() => handleSearchTermClick(term)}
                 className="px-3.5 py-2 rounded-full bg-gray-100 border border-gray-200 mr-2"
               >
                 <Text className="text-xs text-gray-600 font-medium font-jakarta-medium">{term}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
+          
+          {/* Search Results */}
+          {searchQuery.length > 0 && searchResults.length > 0 && (
+            <View className="mt-4">
+              <Text className="text-sm font-semibold text-gray-900 mb-2 font-jakarta-semibold">
+                Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+              </Text>
+              <ScrollView className="max-h-60">
+                {searchResults.map((job: any) => (
+                  <View
+                    key={job.id}
+                    className="bg-white border border-gray-200 rounded-xl p-3 mb-2"
+                  >
+                    <Text className="text-sm font-semibold text-gray-900 font-jakarta-semibold">
+                      {job.serviceType}
+                    </Text>
+                    <Text className="text-xs text-gray-500 mt-1 font-jakarta">
+                      Budget: ${job.maxPrice} | {job.specialistChoice || 'Any specialist'}
+                    </Text>
+                    {job.additionalInfo && (
+                      <Text className="text-xs text-gray-600 mt-1 font-jakarta" numberOfLines={2}>
+                        {job.additionalInfo}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          
+          {searchQuery.length > 0 && !isSearching && searchResults.length === 0 && (
+            <View className="mt-4 p-4 bg-gray-50 rounded-xl">
+              <Text className="text-sm text-gray-500 text-center font-jakarta">
+                No jobs found for "{searchQuery}"
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Main content block ── */}
