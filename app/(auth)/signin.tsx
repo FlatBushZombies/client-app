@@ -38,7 +38,14 @@ const SignIn = () => {
 
   useEffect(() => {
     if (isLoaded && user) {
-      router.replace("/(root)/home")
+      // Check if user has completed onboarding
+      const completedOnboarding = user.unsafeMetadata?.completedOnboarding
+      
+      if (completedOnboarding) {
+        router.replace("/(root)/home")
+      } else {
+        router.replace("/(auth)/onboarding")
+      }
     }
   }, [isLoaded, user])
 

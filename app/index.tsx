@@ -3,17 +3,25 @@
 import { useEffect } from "react"
 import { Text, View, TouchableOpacity, ActivityIndicator, Image, Platform } from "react-native"
 import { router } from "expo-router"
-import { useAuth } from "@clerk/clerk-expo"
+import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.replace("/(root)/home")
+    if (isLoaded && isSignedIn && user) {
+      // Check if user has completed onboarding
+      const completedOnboarding = user.unsafeMetadata?.completedOnboarding
+      
+      if (completedOnboarding) {
+        router.replace("/(root)/home")
+      } else {
+        router.replace("/(auth)/onboarding")
+      }
     }
-  }, [isLoaded, isSignedIn])
+  }, [isLoaded, isSignedIn, user])
 
   const handleGetStarted = () => {
     if (isSignedIn) {
