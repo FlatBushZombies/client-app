@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useUser } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 
 interface Notification {
   id: number;
@@ -28,19 +28,14 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
     
-    // Check if getIdToken method exists
-    if (typeof user.getIdToken !== 'function') {
-      console.warn('[Notifications] user.getIdToken is not a function yet');
-      return;
-    }
-
     try {
-      const token = await user.getIdToken();
+      const token = await getToken();
       const response = await fetch(
         'https://quickhands-api.vercel.app/api/notifications/by-clerk/' + user.id,
         {
@@ -63,8 +58,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Wait for user to be fully loaded with getIdToken method
-    if (!user?.id || typeof user.getIdToken !== 'function') return;
+    if (!user?.id) return;
 
     // Initial fetch
     fetchNotifications();
@@ -73,7 +67,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(fetchNotifications, 10000);
 
     return () => clearInterval(interval);
-  }, [user?.id, user?.getIdToken]);
+  }, [getToken, user?.id]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

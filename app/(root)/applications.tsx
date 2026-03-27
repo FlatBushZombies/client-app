@@ -1,6 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/clerk-expo"
+import { useAuth, useUser } from "@clerk/clerk-expo"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { useEffect, useState } from "react"
@@ -21,6 +21,7 @@ interface Application {
   freelancerClerkId: string
   freelancerName: string
   freelancerEmail: string
+  conversationId?: string
   quotation?: string
   conditions?: string
   status: "pending" | "accepted" | "rejected"
@@ -36,6 +37,7 @@ interface Job {
 
 const ApplicationsScreen = () => {
   const { user } = useUser()
+  const { getToken } = useAuth()
   const { unreadCount } = useSocket()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,13 +57,7 @@ const ApplicationsScreen = () => {
         return
       }
 
-      // Check if getIdToken method exists
-      if (typeof user.getIdToken !== 'function') {
-        console.error('[Applications] user.getIdToken is not a function')
-        throw new Error('Authentication not ready. Please refresh the page.')
-      }
-
-      const token = await user.getIdToken()
+      const token = await getToken()
       console.log('[Applications] Got token:', token ? 'yes' : 'no')
       
       const response = await fetch(
@@ -112,8 +108,7 @@ const ApplicationsScreen = () => {
   }
 
   useEffect(() => {
-    // Wait for user object to be fully loaded with getIdToken method
-    if (user?.id && typeof user.getIdToken === 'function') {
+    if (user?.id) {
       fetchApplications()
       
       // Poll for new applications every 10 seconds
@@ -123,7 +118,7 @@ const ApplicationsScreen = () => {
       
       return () => clearInterval(pollInterval)
     }
-  }, [user?.id, user?.getIdToken])
+  }, [getToken, user?.id])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -133,11 +128,11 @@ const ApplicationsScreen = () => {
   const updateApplicationStatus = async (applicationId: number, status: "accepted" | "rejected") => {
     setUpdatingStatus(applicationId)
     try {
-      if (!user || typeof user.getIdToken !== 'function') {
+      if (!user) {
         console.error('[Applications] Cannot update status - user not ready')
         return
       }
-      const token = await user.getIdToken()
+      const token = await getToken()
       const response = await fetch(
         `https://quickhands-api.vercel.app/api/applications/${applicationId}/status`,
         {
@@ -168,6 +163,23 @@ const ApplicationsScreen = () => {
     } finally {
       setUpdatingStatus(null)
     }
+  }
+
+  const openConversation = (application: Application, job: Job) => {
+    if (!application.conversationId) {
+      console.warn("[Applications] Missing conversationId for application", application.id)
+      return
+    }
+
+    router.push({
+      pathname: "/(root)/chat",
+      params: {
+        conversationId: application.conversationId,
+        otherClerkId: application.freelancerClerkId,
+        otherDisplayName: application.freelancerName,
+        jobTitle: job.serviceType,
+      },
+    })
   }
 
   const formatDate = (dateString: string) => {
@@ -312,68 +324,81 @@ const ApplicationsScreen = () => {
       </View>
 
       {/* Action Buttons */}
-      {application.status === "pending" && (
-        <View style={{ 
-          flexDirection: "row", 
-          gap: 12, 
-          paddingTop: 16, 
-          borderTopWidth: 1, 
-          borderTopColor: "#F3F4F6" 
-        }}>
-          <TouchableOpacity
-            onPress={() => updateApplicationStatus(application.id, "accepted")}
-            disabled={updatingStatus === application.id}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              backgroundColor: "#10B981",
-              paddingVertical: 16,
-              borderRadius: 14,
-              alignItems: "center",
-              shadowColor: "#10B981",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 4,
-            }}
-          >
-            {updatingStatus === application.id ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Accept</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => updateApplicationStatus(application.id, "rejected")}
-            disabled={updatingStatus === application.id}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              backgroundColor: "#EF4444",
-              paddingVertical: 16,
-              borderRadius: 14,
-              alignItems: "center",
-              shadowColor: "#EF4444",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 4,
-            }}
-          >
-            {updatingStatus === application.id ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="close-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Reject</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={{ paddingTop: 16, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+        <TouchableOpacity
+          onPress={() => openConversation(application, job)}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: "#111827",
+            paddingVertical: 14,
+            borderRadius: 14,
+            alignItems: "center",
+            marginBottom: application.status === "pending" ? 12 : 0,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="chatbubble-ellipses" size={18} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={{ color: "#FFF", fontSize: 15, fontWeight: "700" }}>Message Freelancer</Text>
+          </View>
+        </TouchableOpacity>
+
+        {application.status === "pending" && (
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => updateApplicationStatus(application.id, "accepted")}
+              disabled={updatingStatus === application.id}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                backgroundColor: "#10B981",
+                paddingVertical: 16,
+                borderRadius: 14,
+                alignItems: "center",
+                shadowColor: "#10B981",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              {updatingStatus === application.id ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Accept</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => updateApplicationStatus(application.id, "rejected")}
+              disabled={updatingStatus === application.id}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                backgroundColor: "#EF4444",
+                paddingVertical: 16,
+                borderRadius: 14,
+                alignItems: "center",
+                shadowColor: "#EF4444",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              {updatingStatus === application.id ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="close-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>Reject</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   )
 
