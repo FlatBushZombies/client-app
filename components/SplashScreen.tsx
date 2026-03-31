@@ -7,24 +7,37 @@ interface SplashScreenProps {
   onFinish?: () => void
 }
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const GREEN       = "#16a34a"
+const GREEN_LIGHT = "rgba(134,239,172,0.30)"
+const GREEN_RING  = "rgba(22,163,74,0.18)"
+const WHITE       = "#ffffff"
+const INK         = "#0f1f14"
+
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
   // ── animated values ────────────────────────────────────────────────────────
-  const ringScale1   = useRef(new Animated.Value(0.4)).current
-  const ringOpacity1 = useRef(new Animated.Value(0)).current
-  const ringScale2   = useRef(new Animated.Value(0.4)).current
-  const ringOpacity2 = useRef(new Animated.Value(0)).current
+  const arcScale1   = useRef(new Animated.Value(0.6)).current
+  const arcOpacity1 = useRef(new Animated.Value(0)).current
+  const arcScale2   = useRef(new Animated.Value(0.6)).current
+  const arcOpacity2 = useRef(new Animated.Value(0)).current
+  const arcDotScale = useRef(new Animated.Value(0)).current
+  const arcDotOpac  = useRef(new Animated.Value(0)).current
 
-  const logoScale   = useRef(new Animated.Value(0.6)).current
+  const auraOpacity = useRef(new Animated.Value(0)).current
+
+  const logoY       = useRef(new Animated.Value(18)).current
+  const logoScale   = useRef(new Animated.Value(0.85)).current
   const logoOpacity = useRef(new Animated.Value(0)).current
-  const logoPulse   = useRef(new Animated.Value(1)).current
+  const pulseScale  = useRef(new Animated.Value(1)).current
+  const pulseOpac   = useRef(new Animated.Value(0.6)).current
 
   const dividerWidth   = useRef(new Animated.Value(0)).current
   const dividerOpacity = useRef(new Animated.Value(0)).current
 
-  const appNameY       = useRef(new Animated.Value(18)).current
+  const appNameY       = useRef(new Animated.Value(10)).current
   const appNameOpacity = useRef(new Animated.Value(0)).current
 
-  const words = ["Find", "specialists", "to", "help", "with", "your", "task."]
+  const words    = ["Find", "specialists", "to", "help", "with", "your", "task."]
   const wordAnims = useRef(
     words.map(() => ({
       opacity: new Animated.Value(0),
@@ -32,206 +45,393 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     }))
   ).current
 
-  const taglineOpacity = useRef(new Animated.Value(0)).current
   const taglineY       = useRef(new Animated.Value(12)).current
+  const taglineOpacity = useRef(new Animated.Value(0)).current
+
+  const ctaOpacity = useRef(new Animated.Value(0)).current
+
+  const bottomOpacity = useRef(new Animated.Value(0)).current
 
   const exitOpacity = useRef(new Animated.Value(1)).current
 
-  // ── animation sequence ────────────────────────────────────────────────────
+  // ── easing presets ─────────────────────────────────────────────────────────
+  const ease  = Easing.out(Easing.cubic)
+  const spring = Easing.bezier(0.34, 1.56, 0.64, 1)
+
   useEffect(() => {
-    const ease  = Easing.out(Easing.cubic)
-    const easeB = Easing.bezier(0.34, 1.56, 0.64, 1)
-
-    const ringIn = (scale: Animated.Value, opacity: Animated.Value, delay: number) =>
+    // Arc rings
+    const arcs = Animated.parallel([
       Animated.parallel([
-        Animated.timing(scale,   { toValue: 1, duration: 900, delay, easing: ease, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 600, delay, easing: ease, useNativeDriver: true }),
-      ])
-
-    const logoIn = Animated.parallel([
-      Animated.timing(logoScale,   { toValue: 1, duration: 700, delay: 300, easing: easeB, useNativeDriver: true }),
-      Animated.timing(logoOpacity, { toValue: 1, duration: 500, delay: 300, easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcScale1,   { toValue: 1, duration: 1100, delay: 80,  easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcOpacity1, { toValue: 1, duration: 700,  delay: 80,  easing: ease,  useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(arcScale2,   { toValue: 1, duration: 1100, delay: 220, easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcOpacity2, { toValue: 1, duration: 700,  delay: 220, easing: ease,  useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(arcDotScale, { toValue: 1, duration: 400,  delay: 960, easing: spring, useNativeDriver: true }),
+        Animated.timing(arcDotOpac,  { toValue: 1, duration: 300,  delay: 960, easing: ease,  useNativeDriver: true }),
+      ]),
     ])
 
+    // Aura glow
+    const aura = Animated.timing(auraOpacity, {
+      toValue: 1, duration: 1200, delay: 300, easing: ease, useNativeDriver: true,
+    })
+
+    // Logo entrance
+    const logo = Animated.parallel([
+      Animated.timing(logoOpacity, { toValue: 1,    duration: 600, delay: 280, easing: ease,   useNativeDriver: true }),
+      Animated.timing(logoY,       { toValue: 0,    duration: 700, delay: 280, easing: spring, useNativeDriver: true }),
+      Animated.timing(logoScale,   { toValue: 1,    duration: 700, delay: 280, easing: spring, useNativeDriver: true }),
+    ])
+
+    // Pulse ring — loops after logo appears
     const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoPulse, { toValue: 1.06, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(logoPulse, { toValue: 1,    duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    )
-
-    // dividerWidth animates a layout prop so useNativeDriver must be false
-    const dividerIn = Animated.parallel([
-      Animated.timing(dividerWidth,   { toValue: 40,  duration: 500, delay: 700, easing: ease, useNativeDriver: false }),
-      Animated.timing(dividerOpacity, { toValue: 1,   duration: 300, delay: 700, easing: ease, useNativeDriver: false }),
-    ])
-
-    const appNameIn = Animated.parallel([
-      Animated.timing(appNameOpacity, { toValue: 1, duration: 500, delay: 900, easing: ease,  useNativeDriver: true }),
-      Animated.timing(appNameY,       { toValue: 0, duration: 500, delay: 900, easing: easeB, useNativeDriver: true }),
-    ])
-
-    const wordSeq = wordAnims.map((anim, i) =>
       Animated.parallel([
-        Animated.timing(anim.opacity, { toValue: 1, duration: 450, delay: 1100 + i * 110, easing: ease,  useNativeDriver: true }),
-        Animated.timing(anim.y,       { toValue: 0, duration: 450, delay: 1100 + i * 110, easing: easeB, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.timing(pulseScale, { toValue: 1.22, duration: 1600, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(pulseScale, { toValue: 1,    duration: 0,    useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseOpac, { toValue: 0,   duration: 1600, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(pulseOpac, { toValue: 0.6, duration: 0,    useNativeDriver: true }),
+        ]),
       ])
     )
 
-    const taglineIn = Animated.parallel([
-      Animated.timing(taglineOpacity, { toValue: 0.55, duration: 600, delay: 1900, easing: ease,  useNativeDriver: true }),
-      Animated.timing(taglineY,       { toValue: 0,    duration: 600, delay: 1900, easing: easeB, useNativeDriver: true }),
+    // Divider (useNativeDriver: false — animating width)
+    const divider = Animated.parallel([
+      Animated.timing(dividerWidth,   { toValue: 40, duration: 550, delay: 750, easing: ease, useNativeDriver: false }),
+      Animated.timing(dividerOpacity, { toValue: 1,  duration: 350, delay: 750, easing: ease, useNativeDriver: false }),
     ])
 
-    const exitFade = Animated.timing(exitOpacity, {
-      toValue:  0,
-      duration: 500,
-      delay:    3400,
-      easing:   Easing.in(Easing.cubic),
-      useNativeDriver: true,
+    // App name
+    const appName = Animated.parallel([
+      Animated.timing(appNameOpacity, { toValue: 1, duration: 500, delay: 960,  easing: ease,   useNativeDriver: true }),
+      Animated.timing(appNameY,       { toValue: 0, duration: 500, delay: 960,  easing: spring, useNativeDriver: true }),
+    ])
+
+    // Words stagger
+    const wordSeq = wordAnims.map((a, i) =>
+      Animated.parallel([
+        Animated.timing(a.opacity, { toValue: 1, duration: 450, delay: 1120 + i * 105, easing: ease,   useNativeDriver: true }),
+        Animated.timing(a.y,       { toValue: 0, duration: 450, delay: 1120 + i * 105, easing: spring, useNativeDriver: true }),
+      ])
+    )
+
+    // Tagline
+    const tagline = Animated.parallel([
+      Animated.timing(taglineOpacity, { toValue: 1,  duration: 550, delay: 2000, easing: ease,   useNativeDriver: true }),
+      Animated.timing(taglineY,       { toValue: 0,  duration: 550, delay: 2000, easing: spring, useNativeDriver: true }),
+    ])
+
+    // CTA & bottom
+    const cta    = Animated.timing(ctaOpacity,    { toValue: 1, duration: 500, delay: 2300, easing: ease, useNativeDriver: true })
+    const bottom = Animated.timing(bottomOpacity, { toValue: 1, duration: 500, delay: 2500, easing: ease, useNativeDriver: true })
+
+    // Exit
+    const exit = Animated.timing(exitOpacity, {
+      toValue: 0, duration: 450, delay: 3500, easing: Easing.in(Easing.cubic), useNativeDriver: true,
     })
 
     Animated.parallel([
-      ringIn(ringScale1, ringOpacity1, 0),
-      ringIn(ringScale2, ringOpacity2, 200),
-      logoIn,
-      dividerIn,
-      appNameIn,
+      arcs, aura, logo, divider, appName,
       ...wordSeq,
-      taglineIn,
-      exitFade,
+      tagline, cta, bottom, exit,
     ]).start(() => onFinish?.())
 
-    pulse.start()
+    // Start pulse after logo lands
+    setTimeout(() => pulse.start(), 1000)
     return () => pulse.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <Animated.View
-      style={{ opacity: exitOpacity }}
-      className="absolute inset-0 bg-[#0a1a0f] overflow-hidden justify-center z-[9999]"
+      style={{ opacity: exitOpacity, backgroundColor: WHITE }}
+      className="absolute inset-0 overflow-hidden z-[9999]"
     >
 
-      {/* ── ambient rings ── */}
+      {/* ── Decorative arcs — top-right ── */}
       <Animated.View
         style={{
-          opacity:   ringOpacity1,
-          transform: [{ scale: ringScale1 }],
-          width:     500,
-          height:    500,
-          top:       -180,
-          right:     -160,
+          opacity:   arcOpacity1,
+          transform: [{ scale: arcScale1 }],
+          position:  "absolute",
+          width:     260,
+          height:    260,
+          top:       -80,
+          right:     -80,
+          borderRadius: 130,
+          borderWidth:  1,
+          borderColor:  GREEN_RING,
         }}
-        className="absolute rounded-full border border-green-700/20 bg-green-700/[0.04]"
       />
       <Animated.View
         style={{
-          opacity:   ringOpacity2,
-          transform: [{ scale: ringScale2 }],
-          width:     320,
-          height:    320,
-          top:       -90,
-          right:     -70,
+          opacity:   arcOpacity2,
+          transform: [{ scale: arcScale2 }],
+          position:  "absolute",
+          width:     160,
+          height:    160,
+          top:       -36,
+          right:     -36,
+          borderRadius: 80,
+          borderWidth:  1,
+          borderColor:  "rgba(22,163,74,0.09)",
         }}
-        className="absolute rounded-full border border-green-700/[0.14]"
+      />
+      {/* Accent dot on arc */}
+      <Animated.View
+        style={{
+          position:  "absolute",
+          top:        53,
+          right:      121,
+          width:       6,
+          height:      6,
+          borderRadius: 3,
+          backgroundColor: GREEN,
+          opacity:   arcDotOpac,
+          transform: [{ scale: arcDotScale }],
+        }}
       />
 
-      {/* ── main content ── */}
+      {/* ── Aura glow behind logo ── */}
+      <Animated.View
+        style={{
+          opacity:  auraOpacity,
+          position: "absolute",
+          top:      Platform.OS === "ios" ? 148 : 130,
+          left:      20,
+          width:    110,
+          height:   110,
+          borderRadius: 55,
+          backgroundColor: GREEN_LIGHT,
+        }}
+      />
+
+      {/* ── Main content ── */}
       <View
-        className="flex-1 px-9 justify-center"
-        style={{ paddingTop: Platform.OS === "ios" ? 100 : 80 }}
+        style={{
+          flex:       1,
+          paddingHorizontal: 36,
+          paddingTop: Platform.OS === "ios" ? 110 : 90,
+          justifyContent: "flex-start",
+        }}
       >
 
-        {/* logo */}
+        {/* Logo badge */}
         <Animated.View
           style={{
             opacity:   logoOpacity,
-            transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
+            transform: [{ translateY: logoY }, { scale: logoScale }],
+            alignSelf: "flex-start",
+            marginBottom: 28,
           }}
-          className="self-start mb-7 items-center justify-center"
         >
-          {/* glow halo */}
-          <View
-            className="absolute w-24 h-24 rounded-full bg-green-700/20"
+          {/* Pulse ring */}
+          <Animated.View
             style={{
-              shadowColor:   "#15803d",
-              shadowOffset:  { width: 0, height: 0 },
-              shadowOpacity: 0.9,
-              shadowRadius:  28,
-              elevation:     16,
+              position:    "absolute",
+              top:         -10,
+              left:        -10,
+              right:       -10,
+              bottom:      -10,
+              borderRadius: 30,
+              borderWidth:  1.5,
+              borderColor:  GREEN_RING,
+              opacity:      pulseOpac,
+              transform:    [{ scale: pulseScale }],
             }}
           />
-          {/* badge */}
+
+          {/* Badge */}
           <View
-            className="w-[72px] h-[72px] rounded-[20px] bg-green-700 items-center justify-center"
             style={{
-              shadowColor:   "#15803d",
-              shadowOffset:  { width: 0, height: 8 },
-              shadowOpacity: 0.55,
-              shadowRadius:  20,
-              elevation:     14,
+              width:        68,
+              height:       68,
+              borderRadius: 20,
+              backgroundColor: GREEN,
+              alignItems:   "center",
+              justifyContent: "center",
+              overflow:     "hidden",
+              // Drop shadow
+              ...Platform.select({
+                ios: {
+                  shadowColor:   GREEN,
+                  shadowOffset:  { width: 0, height: 10 },
+                  shadowOpacity: 0.35,
+                  shadowRadius:  18,
+                },
+                android: { elevation: 12 },
+              }),
             }}
           >
-            <Text className="text-[36px] font-black text-green-900 leading-[42px]">Q</Text>
+            {/* Inner gloss */}
+            <View
+              style={{
+                position:     "absolute",
+                top:          0,
+                left:         0,
+                right:        0,
+                height:       "46%",
+                backgroundColor: "rgba(255,255,255,0.18)",
+                borderTopLeftRadius:  20,
+                borderTopRightRadius: 20,
+              }}
+            />
+            <Text
+              style={{
+                fontSize:   38,
+                color:      "#fff",
+                lineHeight: 44,
+                fontFamily: "DMSerifDisplay-Regular", // Register this in your app
+                letterSpacing: -1,
+              }}
+            >
+              Q
+            </Text>
           </View>
         </Animated.View>
 
-        {/* divider — width is animated so kept in style prop */}
+        {/* Divider — width animated so useNativeDriver: false */}
         <Animated.View
-          style={{ width: dividerWidth, opacity: dividerOpacity }}
-          className="h-[2.5px] rounded-sm bg-green-700 mb-[18px]"
+          style={{
+            width:        dividerWidth,
+            opacity:      dividerOpacity,
+            height:       1,
+            backgroundColor: GREEN,
+            borderRadius:    1,
+            marginBottom:    18,
+          }}
         />
 
-        {/* app name */}
+        {/* App name */}
         <Animated.Text
           style={{
-            opacity:   appNameOpacity,
-            transform: [{ translateY: appNameY }],
+            opacity:      appNameOpacity,
+            transform:    [{ translateY: appNameY }],
+            fontSize:     10,
+            fontWeight:   "500",
+            letterSpacing: 3.5,
+            textTransform: "uppercase",
+            color:         GREEN,
+            marginBottom:  22,
+            fontFamily:   "DMSans-Medium",
           }}
-          className="text-[11px] font-bold text-green-600 tracking-[3.5px] uppercase mb-5 font-jakarta-bold"
         >
           QuickHands Now
         </Animated.Text>
 
-        {/* headline — word by word */}
-        <View className="flex-row flex-wrap mb-[18px]">
-          {words.map((word, i) => (
-            <Animated.Text
-              key={i}
-              style={{
-                opacity:   wordAnims[i].opacity,
-                transform: [{ translateY: wordAnims[i].y }],
-              }}
-              className="text-[42px] font-extrabold text-green-50 leading-[52px] tracking-tighter font-jakarta-bold"
-            >
-              {word}{" "}
-            </Animated.Text>
-          ))}
+        {/* Headline — word by word, italic on key words */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 20 }}>
+          {words.map((word, i) => {
+            const isEm = word === "specialists" || word === "task."
+            return (
+              <Animated.Text
+                key={i}
+                style={{
+                  opacity:      wordAnims[i].opacity,
+                  transform:    [{ translateY: wordAnims[i].y }],
+                  fontSize:     40,
+                  lineHeight:   46,
+                  letterSpacing: -1.5,
+                  color:        isEm ? GREEN : INK,
+                  fontFamily:   isEm ? "DMSerifDisplay-Italic" : "DMSerifDisplay-Regular",
+                  marginRight:   5,
+                }}
+              >
+                {word}
+              </Animated.Text>
+            )
+          })}
         </View>
 
-        {/* tagline */}
+        {/* Tagline */}
         <Animated.Text
           style={{
-            opacity:   taglineOpacity,
-            transform: [{ translateY: taglineY }],
+            opacity:      taglineOpacity,
+            transform:    [{ translateY: taglineY }],
+            fontSize:     14,
+            color:        "#6b7280",
+            lineHeight:   22,
+            fontWeight:   "300",
+            maxWidth:     240,
+            fontFamily:   "DMSans-Light",
+            marginBottom: 32,
           }}
-          className="text-[15px] text-green-200 leading-6 tracking-wide max-w-[280px] font-jakarta"
         >
           Connect with top-tier specialists to get the job done.
         </Animated.Text>
+
+        {/* CTA row */}
+        <Animated.View
+          style={{
+            opacity:       ctaOpacity,
+            flexDirection: "row",
+            alignItems:    "center",
+            gap:           14,
+          }}
+        >
+          <View
+            style={{
+              height:          40,
+              paddingHorizontal: 22,
+              backgroundColor: GREEN,
+              borderRadius:    11,
+              alignItems:      "center",
+              justifyContent:  "center",
+              ...Platform.select({
+                ios: {
+                  shadowColor:   GREEN,
+                  shadowOffset:  { width: 0, height: 4 },
+                  shadowOpacity: 0.28,
+                  shadowRadius:  10,
+                },
+                android: { elevation: 6 },
+              }),
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "500", letterSpacing: 0.2, fontFamily: "DMSans-Medium" }}>
+              Get started
+            </Text>
+          </View>
+
+          {/* Dot trail */}
+          {[0.8, 0.35, 0.15].map((o, i) => (
+            <View
+              key={i}
+              style={{
+                width:         5,
+                height:        5,
+                borderRadius:  2.5,
+                backgroundColor: GREEN,
+                opacity:       o,
+              }}
+            />
+          ))}
+        </Animated.View>
+
       </View>
 
-      {/* ── bottom trust badge ── */}
-      <View
-        className="flex-row items-center justify-center gap-2"
-        style={{ paddingBottom: Platform.OS === "ios" ? 48 : 32 }}
+      {/* ── Bottom trust badge ── */}
+      <Animated.View
+        style={{
+          opacity:       bottomOpacity,
+          flexDirection: "row",
+          alignItems:    "center",
+          justifyContent: "center",
+          gap:           6,
+          paddingBottom: Platform.OS === "ios" ? 52 : 34,
+        }}
       >
-        <View className="w-1.5 h-1.5 rounded-full bg-green-700 opacity-50" />
-        <Text className="text-xs text-green-200/45 tracking-wide font-jakarta">
+        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: GREEN, opacity: 0.4 }} />
+        <Text style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 0.5, fontFamily: "DMSans-Regular" }}>
           Access top-tier specialists
         </Text>
-      </View>
+      </Animated.View>
 
     </Animated.View>
   )

@@ -1,71 +1,126 @@
 import { Tabs } from "expo-router"
-import { Text, View, Platform } from "react-native"
+import { Platform, Text, View } from "react-native"
 import {
   BriefcaseIcon,
   ChatBubbleLeftRightIcon,
   HomeIcon,
-  UserIcon,
   RocketLaunchIcon,
+  UserIcon,
 } from "react-native-heroicons/outline"
+import {
+  BriefcaseIcon as BriefcaseSolid,
+  ChatBubbleLeftRightIcon as ChatSolid,
+  HomeIcon as HomeSolid,
+  RocketLaunchIcon as RocketSolid,
+  UserIcon as UserSolid,
+} from "react-native-heroicons/solid"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-// Fix #4: derive height from content rather than magic number
-const ICON_SIZE   = 20
-const PILL_H      = 32   // h-8
-const LABEL_H     = 12   // ~9.5px font + line height
-const V_PADDING   = 10   // breathing room above icon + below label
-const TAB_CONTENT = PILL_H + 4 + LABEL_H  // pill + gap-1 + label
-const TAB_BAR_HEIGHT = TAB_CONTENT + V_PADDING * 2  // = 68
+const TAB_BAR_HEIGHT = 74
+const TAB_SLOT_HEIGHT = 58
+const ICON_SIZE = 21
+
+const COLOR = {
+  active: "#16a34a",
+  activeLight: "#dcfce7",
+  activeGlow: "#22c55e",
+  inactive: "#94a3b8",
+  bg: "#ffffff",
+  border: "#f1f5f9",
+}
 
 const TabIcon = ({
-  Icon,
+  IconOutline,
+  IconSolid,
   focused,
   label,
 }: {
-  Icon: any
+  IconOutline: any
+  IconSolid: any
   focused: boolean
   label: string
 }) => {
-  return (
-    <View className="items-center justify-center w-16 gap-1">
+  const Icon = focused ? IconSolid : IconOutline
 
-      {/* Icon pill */}
+  return (
+    <View
+      style={{
+        width: 68,
+        height: TAB_SLOT_HEIGHT,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: 4,
+      }}
+    >
       <View
-        className={`flex-row items-center justify-center rounded-[14px] w-11 h-8 ${
-          focused ? "bg-green-700" : "bg-transparent"
-        }`}
         style={{
-          // Fix #1: glow only when focused, no shadow on unfocused
-          shadowColor: "#1A7A4A",
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: focused ? 0.35 : 0,
-          shadowRadius: 8,
-          elevation: focused ? 4 : 0,
+          position: "absolute",
+          top: 4,
+          width: focused ? 18 : 0,
+          height: 3,
+          borderRadius: 999,
+          backgroundColor: focused ? COLOR.active : "transparent",
+          opacity: focused ? 1 : 0,
+        }}
+      />
+
+      <View
+        style={{
+          width: 44,
+          height: 34,
+          borderRadius: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: focused ? COLOR.activeLight : "transparent",
+          overflow: "hidden",
+          ...(focused
+            ? Platform.select({
+                ios: {
+                  shadowColor: COLOR.activeGlow,
+                  shadowOffset: { width: 0, height: 5 },
+                  shadowOpacity: 0.24,
+                  shadowRadius: 12,
+                },
+                android: {
+                  elevation: 4,
+                },
+              })
+            : {}),
         }}
       >
-        {focused && (
-          <View className="absolute top-0 left-0 right-0 h-1/2 rounded-tl-[14px] rounded-tr-[14px] bg-white/10" />
-        )}
+        {focused ? (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "52%",
+              backgroundColor: "rgba(255,255,255,0.28)",
+            }}
+          />
+        ) : null}
+
         <Icon
           size={ICON_SIZE}
-          color={focused ? "#FFFFFF" : "#9CA3AF"}
-          strokeWidth={focused ? 2.5 : 1.8}
+          color={focused ? COLOR.active : COLOR.inactive}
+          strokeWidth={focused ? 2.05 : 1.8}
         />
       </View>
 
-      {/* Fix #3: use registered Jakarta font families instead of font-bold/font-medium */}
-      {/* Fix #5: "Tasks" instead of "My Tasks" to fit w-16 without truncation */}
       <Text
         numberOfLines={1}
-        className={`text-[9.5px] tracking-[0.2px] ${
-          focused
-            ? "font-jakarta-bold text-green-700"
-            : "font-jakarta-medium text-gray-400"
-        }`}
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          lineHeight: 13,
+          letterSpacing: 0.24,
+          fontFamily: focused ? "PlusJakartaSans-Bold" : "PlusJakartaSans-Medium",
+          color: focused ? COLOR.active : COLOR.inactive,
+        }}
       >
         {label}
       </Text>
-
     </View>
   )
 }
@@ -77,36 +132,29 @@ export default function Layout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarShowLabel: false,
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: COLOR.bg,
           height: TAB_BAR_HEIGHT + insets.bottom,
-          paddingBottom: insets.bottom,
-          paddingTop: 0,
+          paddingTop: 6,
+          paddingBottom: Math.max(insets.bottom, 10),
+          borderTopWidth: 1,
+          borderTopColor: COLOR.border,
           elevation: 0,
-          // Fix #1: consistent top separator + upward shadow on both platforms
           ...Platform.select({
             ios: {
-              borderTopWidth: 0.5,
-              borderTopColor: "#E5E7EB",
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-            },
-            android: {
-              borderTopWidth: 0.5,
-              borderTopColor: "#E5E7EB",
+              shadowOffset: { width: 0, height: -7 },
+              shadowOpacity: 0.05,
+              shadowRadius: 18,
             },
           }),
         },
-        // Fix #2: remove redundant justifyContent/alignItems that conflict with
-        // Expo Router's own tab item centering logic
         tabBarItemStyle: {
           height: TAB_BAR_HEIGHT,
-          paddingTop: 0,
-          paddingBottom: 0,
+          justifyContent: "center",
+          alignItems: "center",
         },
       }}
     >
@@ -114,7 +162,12 @@ export default function Layout() {
         name="home"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={HomeIcon} focused={focused} label="Home" />
+            <TabIcon
+              IconOutline={HomeIcon}
+              IconSolid={HomeSolid}
+              focused={focused}
+              label="Home"
+            />
           ),
         }}
       />
@@ -123,7 +176,12 @@ export default function Layout() {
         name="service"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={BriefcaseIcon} focused={focused} label="Jobs" />
+            <TabIcon
+              IconOutline={BriefcaseIcon}
+              IconSolid={BriefcaseSolid}
+              focused={focused}
+              label="Jobs"
+            />
           ),
         }}
       />
@@ -132,7 +190,12 @@ export default function Layout() {
         name="chat"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={ChatBubbleLeftRightIcon} focused={focused} label="Chat" />
+            <TabIcon
+              IconOutline={ChatBubbleLeftRightIcon}
+              IconSolid={ChatSolid}
+              focused={focused}
+              label="Chat"
+            />
           ),
         }}
       />
@@ -141,27 +204,31 @@ export default function Layout() {
         name="profile"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={UserIcon} focused={focused} label="Profile" />
+            <TabIcon
+              IconOutline={UserIcon}
+              IconSolid={UserSolid}
+              focused={focused}
+              label="Profile"
+            />
           ),
         }}
       />
 
-      {/* Fix #5: label shortened from "My Tasks" → "Tasks" to fit w-16 */}
       <Tabs.Screen
         name="applications"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={RocketLaunchIcon} focused={focused} label="Tasks" />
+            <TabIcon
+              IconOutline={RocketLaunchIcon}
+              IconSolid={RocketSolid}
+              focused={focused}
+              label="Tasks"
+            />
           ),
         }}
       />
 
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null,
-        }}
-      />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   )
 }

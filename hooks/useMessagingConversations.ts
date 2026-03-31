@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ConversationSummary = {
   conversationId: string;
@@ -26,9 +26,14 @@ export function useMessagingConversations({
   getToken,
   enabled = true,
 }: Options) {
+  const getTokenRef = useRef(getToken);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const refresh = useCallback(async () => {
     if (!enabled) {
@@ -42,7 +47,7 @@ export function useMessagingConversations({
     setError(null);
 
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) {
         setError("Not signed in");
         setConversations([]);
@@ -68,7 +73,7 @@ export function useMessagingConversations({
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, enabled, getToken]);
+  }, [apiUrl, enabled]);
 
   useEffect(() => {
     refresh();

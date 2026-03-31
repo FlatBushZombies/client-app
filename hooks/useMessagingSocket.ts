@@ -31,11 +31,16 @@ export function useMessagingSocket({
   enabled = true,
 }: Options) {
   const socketRef = useRef<Socket | null>(null);
+  const getTokenRef = useRef(getToken);
   const [connected, setConnected] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [messages, setMessages] = useState<ServerMessage[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
   const realtimeEnabled = enabled && !isUnsupportedSocketHost(serverUrl);
+
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const appendMessage = useCallback((incoming: ServerMessage) => {
     setMessages((prev) => {
@@ -64,7 +69,7 @@ export function useMessagingSocket({
     const baseApiUrl = apiBaseUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
 
     (async () => {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token || cancelled) {
         setLastError("Not signed in");
         setLoadingHistory(false);
@@ -148,7 +153,7 @@ export function useMessagingSocket({
       socketRef.current = null;
       setConnected(false);
     };
-  }, [apiBaseUrl, appendMessage, conversationId, enabled, getToken, realtimeEnabled, serverUrl]);
+  }, [apiBaseUrl, appendMessage, conversationId, enabled, realtimeEnabled, serverUrl]);
 
   const sendMessage = useCallback(
     async (text: string, clientMessageId?: string) => {
@@ -157,7 +162,7 @@ export function useMessagingSocket({
         return;
       }
 
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) {
         setLastError("Not signed in");
         return;
@@ -228,7 +233,7 @@ export function useMessagingSocket({
         }
       }
     },
-    [apiBaseUrl, appendMessage, conversationId, getToken]
+    [apiBaseUrl, appendMessage, conversationId]
   );
 
   return {

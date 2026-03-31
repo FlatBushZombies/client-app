@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import { getApiUrl } from "@/lib/fetch";
 
 interface Notification {
   id: number;
@@ -31,17 +32,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     
     try {
       const token = await getToken();
       const response = await fetch(
-        'https://quickhands-api.vercel.app/api/notifications/by-clerk/' + user.id,
+        getApiUrl('/api/notifications/by-clerk/' + user.id),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
           },
         }
       );
@@ -55,7 +55,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[Notifications] Error fetching:', error);
     }
-  };
+  }, [getToken, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -67,7 +67,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(fetchNotifications, 10000);
 
     return () => clearInterval(interval);
-  }, [getToken, user?.id]);
+  }, [fetchNotifications, user?.id]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -103,3 +103,5 @@ export function useSocket() {
   }
   return context;
 }
+
+

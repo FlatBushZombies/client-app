@@ -15,6 +15,7 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
+import { getApiUrl } from "@/lib/fetch"
 
 interface FormData {
   serviceType: string
@@ -105,8 +106,6 @@ export default function ServiceRequestScreen() {
     documents: "",
   })
 
-  const API_BASE = "https://quickhands-api.vercel.app"
-
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }))
   }
@@ -146,7 +145,7 @@ export default function ServiceRequestScreen() {
         userName: user.fullName || "Anonymous",
         userAvatar: user.imageUrl || null,
       }
-      const response = await fetch(`${API_BASE}/api/jobs`, {
+      const response = await fetch(getApiUrl("/api/jobs"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -176,7 +175,7 @@ export default function ServiceRequestScreen() {
     } finally {
       setLoading(false)
     }
-  }, [formData, user, isLoaded, isSignedIn])
+  }, [formData, getToken, user, isLoaded, isSignedIn])
 
   return (
     <SafeAreaView className="flex-1 bg-[#0A1F16]">

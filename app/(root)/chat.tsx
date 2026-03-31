@@ -58,7 +58,6 @@ export default function ChatScreen() {
     conversations,
     loading: loadingConversations,
     error: conversationsError,
-    refresh: refreshConversations,
   } = useMessagingConversations({
     apiUrl: API_BASE_URL,
     getToken,
@@ -121,9 +120,8 @@ export default function ChatScreen() {
       return;
     }
 
-    setUsers([]);
-    refreshConversations();
-  }, [conversationId, loadUsers, refreshConversations, searchingUsers]);
+    setUsers((current) => (current.length === 0 ? current : []));
+  }, [conversationId, loadUsers, searchingUsers]);
 
   const startChat = async (otherClerkId: string, displayName: string) => {
     if (!isLoaded || !isSignedIn || !userId) {
