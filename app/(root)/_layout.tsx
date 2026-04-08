@@ -15,6 +15,7 @@ import {
   UserIcon as UserSolid,
 } from "react-native-heroicons/solid"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useSocket } from "@/contexts/SocketContext"
 
 const TAB_BAR_HEIGHT = 74
 const TAB_SLOT_HEIGHT = 58
@@ -27,6 +28,7 @@ const COLOR = {
   inactive: "#94a3b8",
   bg: "#ffffff",
   border: "#f1f5f9",
+  badge: "#ef4444",
 }
 
 const TabIcon = ({
@@ -34,13 +36,16 @@ const TabIcon = ({
   IconSolid,
   focused,
   label,
+  badgeCount = 0,
 }: {
   IconOutline: any
   IconSolid: any
   focused: boolean
   label: string
+  badgeCount?: number
 }) => {
   const Icon = focused ? IconSolid : IconOutline
+  const badgeLabel = badgeCount > 99 ? "99+" : badgeCount.toString()
 
   return (
     <View
@@ -106,6 +111,36 @@ const TabIcon = ({
           color={focused ? COLOR.active : COLOR.inactive}
           strokeWidth={focused ? 2.05 : 1.8}
         />
+
+        {badgeCount > 0 ? (
+          <View
+            style={{
+              position: "absolute",
+              top: 2,
+              right: 0,
+              minWidth: 18,
+              height: 18,
+              paddingHorizontal: 4,
+              borderRadius: 9,
+              backgroundColor: COLOR.badge,
+              borderWidth: 1,
+              borderColor: COLOR.bg,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 9,
+                lineHeight: 11,
+                fontFamily: "PlusJakartaSans-Bold",
+              }}
+            >
+              {badgeLabel}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <Text
@@ -127,6 +162,7 @@ const TabIcon = ({
 
 export default function Layout() {
   const insets = useSafeAreaInsets()
+  const { unreadCount } = useSocket()
 
   return (
     <Tabs
@@ -223,6 +259,7 @@ export default function Layout() {
               IconSolid={RocketSolid}
               focused={focused}
               label="Tasks"
+              badgeCount={unreadCount}
             />
           ),
         }}

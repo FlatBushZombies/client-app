@@ -111,6 +111,8 @@ const HomeScreen = () => {
   const locationLabel = locationLoading ? "Detecting location…" : city ?? "Location unavailable"
   const locationDetected = !locationLoading && !!city
 
+  const unreadBadgeLabel = unreadCount > 99 ? "99+" : unreadCount.toString()
+
   if (checkingAuth) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-[#f8f8f6]">
@@ -192,16 +194,30 @@ const HomeScreen = () => {
               <View
                 style={{
                   position:        "absolute",
-                  top:              7,
-                  right:            7,
-                  width:            8,
-                  height:           8,
-                  borderRadius:     4,
+                  top:              3,
+                  right:            3,
+                  minWidth:        18,
+                  height:          18,
+                  paddingHorizontal: 4,
+                  borderRadius:     9,
                   backgroundColor:  "#ef4444",
+                  alignItems:      "center",
+                  justifyContent:  "center",
                   borderWidth:      1.5,
                   borderColor:      "#ffffff",
                 }}
-              />
+              >
+                <Text
+                  style={{
+                    color: "#ffffff",
+                    fontSize: 9,
+                    fontWeight: "700",
+                    fontFamily: "DMSans-SemiBold",
+                  }}
+                >
+                  {unreadBadgeLabel}
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>

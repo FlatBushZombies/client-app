@@ -1,11 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { useSocket } from "@/contexts/SocketContext"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
-import { useEffect } from "react"
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   SafeAreaView,
@@ -15,8 +14,15 @@ import {
 } from "react-native"
 
 const NotificationsScreen = () => {
-  const { notifications, unreadCount, refreshNotifications, markAsRead } = useSocket()
-  const [refreshing, setRefreshing] = React.useState(false)
+  const {
+    notifications,
+    unreadCount,
+    connected,
+    refreshNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useSocket()
+  const [refreshing, setRefreshing] = useState(false)
 
   const onRefresh = async () => {
     setRefreshing(true)
@@ -39,21 +45,83 @@ const NotificationsScreen = () => {
   }
 
   const getNotificationIcon = (message: string) => {
-    if (message.includes("applied")) return { name: "person-add" as const, color: "#3B82F6", bg: "#DBEAFE" }
-    if (message.includes("accepted")) return { name: "checkmark-circle" as const, color: "#10B981", bg: "#D1FAE5" }
-    if (message.includes("rejected")) return { name: "close-circle" as const, color: "#EF4444", bg: "#FEE2E2" }
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes("applied")) {
+      return { name: "person-add" as const, color: "#3B82F6", bg: "#DBEAFE" }
+    }
+
+    if (normalized.includes("accepted")) {
+      return { name: "checkmark-circle" as const, color: "#10B981", bg: "#D1FAE5" }
+    }
+
+    if (normalized.includes("rejected")) {
+      return { name: "close-circle" as const, color: "#EF4444", bg: "#FEE2E2" }
+    }
+
+    if (normalized.includes("phone number") || normalized.includes("contact")) {
+      return { name: "call" as const, color: "#0EA5E9", bg: "#E0F2FE" }
+    }
+
     return { name: "notifications" as const, color: "#6366F1", bg: "#E0E7FF" }
+  }
+
+  const getNotificationCopy = (message: string) => {
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes("accepted") && (normalized.includes("phone number") || normalized.includes("contact"))) {
+      return {
+        title: "Offer accepted",
+        body: "The client accepted this offer and shared contact details so you can continue directly.",
+      }
+    }
+
+    if (normalized.includes("accepted")) {
+      return {
+        title: "Offer accepted",
+        body: "The client accepted this offer. Contact sharing is the next step before direct communication.",
+      }
+    }
+
+    if (normalized.includes("rejected")) {
+      return {
+        title: "Offer rejected",
+        body: "The client declined this offer, so this application will not move forward.",
+      }
+    }
+
+    if (normalized.includes("phone number") || normalized.includes("contact")) {
+      return {
+        title: "Contact shared",
+        body: "Contact details were shared for this job, so you can now follow up directly.",
+      }
+    }
+
+    if (normalized.includes("applied")) {
+      return {
+        title: "New application update",
+        body: message,
+      }
+    }
+
+    return {
+      title: "Notification",
+      body: message,
+    }
+  }
+
+  const handleNotificationPress = async (notificationId: number) => {
+    await markAsRead(notificationId)
+    router.push("/(root)/applications")
   }
 
   const renderNotification = ({ item }: { item: any }) => {
     const iconData = getNotificationIcon(item.message)
+    const copy = getNotificationCopy(item.message)
 
     return (
       <TouchableOpacity
-        onPress={() => {
-          markAsRead(item.id)
-          router.push("/(root)/applications")
-        }}
+        onPress={() => void handleNotificationPress(item.id)}
         activeOpacity={0.7}
         style={{
           backgroundColor: item.read ? "#FFF" : "#F8FAFC",
@@ -71,7 +139,6 @@ const NotificationsScreen = () => {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-          {/* Icon */}
           <View
             style={{
               width: 48,
@@ -86,29 +153,37 @@ const NotificationsScreen = () => {
             <Ionicons name={iconData.name} size={24} color={iconData.color} />
           </View>
 
-          {/* Content */}
           <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontSize: 15,
-                fontWeight: item.read ? "400" : "600",
+                fontWeight: "700",
                 color: "#111827",
-                lineHeight: 21,
-                marginBottom: 6,
+                lineHeight: 20,
+                marginBottom: 4,
               }}
             >
-              {item.message}
+              {copy.title}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: item.read ? "400" : "500",
+                color: "#4B5563",
+                lineHeight: 20,
+                marginBottom: 8,
+              }}
+            >
+              {copy.body}
             </Text>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-              <Text style={{ fontSize: 13, color: "#6B7280" }}>
-                {formatTimeAgo(item.createdAt)}
-              </Text>
+              <Text style={{ fontSize: 13, color: "#6B7280" }}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
           </View>
 
-          {/* Unread indicator */}
           {!item.read && (
             <View
               style={{
@@ -128,7 +203,6 @@ const NotificationsScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
-      {/* Header */}
       <View
         style={{
           flexDirection: "row",
@@ -159,17 +233,20 @@ const NotificationsScreen = () => {
           <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>
             Notifications
           </Text>
-          {unreadCount > 0 && (
-            <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
-              {unreadCount} unread
-            </Text>
-          )}
+          <Text style={{ fontSize: 12, color: connected ? "#10B981" : "#6B7280", marginTop: 2 }}>
+            {unreadCount > 0 ? `${unreadCount} unread` : connected ? "Live updates on" : "Pull to refresh"}
+          </Text>
         </View>
 
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={() => void markAllAsRead()}
+          disabled={unreadCount === 0}
+          style={{ opacity: unreadCount === 0 ? 0.5 : 1 }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#16A34A" }}>Read all</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* List */}
       {notifications.length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <View
@@ -197,7 +274,7 @@ const NotificationsScreen = () => {
               paddingHorizontal: 20,
             }}
           >
-            You'll be notified when freelancers{"\n"}apply to your jobs
+            You&apos;ll be notified when important application updates happen, including offers being accepted, rejected, or moved to direct contact.
           </Text>
         </View>
       ) : (

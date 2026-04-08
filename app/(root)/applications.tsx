@@ -197,7 +197,10 @@ export default function ApplicationsScreen() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<{
+    id: number
+    action: Extract<ApplicationStatus, "accepted" | "rejected">
+  } | null>(null)
   const [sharingContactId, setSharingContactId] = useState<number | null>(null)
   const [expandedContactId, setExpandedContactId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -299,7 +302,7 @@ export default function ApplicationsScreen() {
     application: Application,
     status: Extract<ApplicationStatus, "accepted" | "rejected">
   ) => {
-    setUpdatingStatus(application.id)
+    setUpdatingStatus({ id: application.id, action: status })
     try {
       const token = await getToken()
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/status`), {
@@ -575,6 +578,11 @@ export default function ApplicationsScreen() {
     const isPending = application.status === "pending"
     const isAccepted = application.status === "accepted"
     const needsPhone = isAccepted && !application.contactExchange?.readyForDirectContact
+    const isUpdatingThisApplication = updatingStatus?.id === application.id
+    const isAcceptLoading =
+      updatingStatus?.id === application.id && updatingStatus?.action === "accepted"
+    const isRejectLoading =
+      updatingStatus?.id === application.id && updatingStatus?.action === "rejected"
 
     return (
       <View
@@ -672,20 +680,20 @@ export default function ApplicationsScreen() {
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => updateApplicationStatus(application, "accepted")}
-                disabled={updatingStatus === application.id}
+                disabled={isUpdatingThisApplication}
                 className="flex-[2] rounded-2xl py-4 items-center bg-emerald-600"
                 style={{ shadowColor: "#059669", shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
               >
-                {updatingStatus === application.id
+                {isAcceptLoading
                   ? <ActivityIndicator color="#FFF" size="small" />
                   : <Text className="text-white text-sm font-bold">Accept</Text>}
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => updateApplicationStatus(application, "rejected")}
-                disabled={updatingStatus === application.id}
+                disabled={isUpdatingThisApplication}
                 className="flex-1 rounded-2xl py-4 items-center bg-rose-50 border border-rose-200"
               >
-                {updatingStatus === application.id
+                {isRejectLoading
                   ? <ActivityIndicator color="#e11d48" size="small" />
                   : <Text className="text-rose-600 text-sm font-semibold">Reject</Text>}
               </TouchableOpacity>
