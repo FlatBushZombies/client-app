@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
 import { getApiUrl } from "@/lib/fetch"
+import * as Location from "expo-location"
 
 interface FormData {
   serviceType: string
@@ -26,6 +27,14 @@ interface FormData {
   specialistChoice: string
   additionalInfo: string
   documents: string
+}
+
+interface TaskLocationState {
+  loading: boolean
+  label: string | null
+  city: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 // ─── Reusable labelled input ───────────────────────────────────────
@@ -94,6 +103,13 @@ export default function ServiceRequestScreen() {
   const [loading, setLoading] = useState(false)
   const { user, isLoaded } = useUser()
   const { getToken, isSignedIn } = useAuth()
+  const [taskLocation, setTaskLocation] = useState<TaskLocationState>({
+    loading: false,
+    label: null,
+    city: null,
+    latitude: null,
+    longitude: null,
+  })
 
   const [formData, setFormData] = useState<FormData>({
     serviceType: "",
@@ -116,6 +132,94 @@ export default function ServiceRequestScreen() {
       : [...formData.selectedServices, service]
     updateFormData({ selectedServices: updated })
   }
+
+  const syncUserLocation = useCallback(
+    async (location: Omit<TaskLocationState, "loading">) => {
+      try {
+        const token = await getToken()
+        if (!token || !user?.id) {
+          return
+        }
+
+        await fetch(getApiUrl("/api/user/location"), {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            clerkId: user.id,
+            label: location.label,
+            city: location.city,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }),
+        })
+      } catch (error) {
+        console.warn("[Location] Failed to sync client location", error)
+      }
+    },
+    [getToken, user?.id]
+  )
+
+  const loadTaskLocation = useCallback(async () => {
+    try {
+      setTaskLocation((current) => ({ ...current, loading: true }))
+      const { status } = await Location.requestForegroundPermissionsAsync()
+
+      if (status !== "granted") {
+        setTaskLocation({
+          loading: false,
+          label: null,
+          city: null,
+          latitude: null,
+          longitude: null,
+        })
+        return
+      }
+
+      const currentPosition = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+      const [result] = await Location.reverseGeocodeAsync({
+        latitude: currentPosition.coords.latitude,
+        longitude: currentPosition.coords.longitude,
+      })
+
+      const nextLocation = {
+        label:
+          result?.city ||
+          result?.district ||
+          result?.subregion ||
+          result?.region ||
+          "Your current area",
+        city: result?.city || result?.district || result?.subregion || null,
+        latitude: currentPosition.coords.latitude,
+        longitude: currentPosition.coords.longitude,
+      }
+
+      setTaskLocation({
+        loading: false,
+        ...nextLocation,
+      })
+      await syncUserLocation(nextLocation)
+    } catch (error) {
+      console.warn("[Location] Failed to capture task location", error)
+      setTaskLocation({
+        loading: false,
+        label: null,
+        city: null,
+        latitude: null,
+        longitude: null,
+      })
+    }
+  }, [syncUserLocation])
+
+  useEffect(() => {
+    if (modalVisible) {
+      void loadTaskLocation()
+    }
+  }, [loadTaskLocation, modalVisible])
 
   const handleSubmit = useCallback(async () => {
     if (!isLoaded || !isSignedIn || !user) {
@@ -144,6 +248,12 @@ export default function ServiceRequestScreen() {
         clerkId: user.id,
         userName: user.fullName || "Anonymous",
         userAvatar: user.imageUrl || null,
+        location: {
+          label: taskLocation.label,
+          city: taskLocation.city,
+          latitude: taskLocation.latitude,
+          longitude: taskLocation.longitude,
+        },
       }
       const response = await fetch(getApiUrl("/api/jobs"), {
         method: "POST",
@@ -155,7 +265,13 @@ export default function ServiceRequestScreen() {
       })
       const result = await response.json()
       if (response.status === 201 && result?.success) {
-        Alert.alert("Success", "Service request created successfully.")
+        const nearbyFreelancerCount = Number(result?.matchingSummary?.nearbyFreelancerCount) || 0
+        Alert.alert(
+          "Success",
+          nearbyFreelancerCount > 0
+            ? `Service request created successfully. ${nearbyFreelancerCount} nearby freelancer${nearbyFreelancerCount === 1 ? "" : "s"} were prioritised for notifications in your area.`
+            : "Service request created successfully. Matching nearby freelancers will be notified as they become available."
+        )
         setFormData({
           serviceType: "",
           selectedServices: [],
@@ -175,7 +291,7 @@ export default function ServiceRequestScreen() {
     } finally {
       setLoading(false)
     }
-  }, [formData, getToken, user, isLoaded, isSignedIn])
+  }, [formData, getToken, user, isLoaded, isSignedIn, taskLocation])
 
   return (
     <SafeAreaView className="flex-1 bg-[#0A1F16]">
@@ -348,6 +464,37 @@ export default function ServiceRequestScreen() {
                 onChangeText={(t: string) => updateFormData({ maxPrice: t })}
                 keyboardType="numeric"
               />
+            </Card>
+
+            <Card title="Task Area">
+              <View className="rounded-[14px] border-[1.5px] border-green-200 bg-[#F0F7F4] px-4 py-4">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-[11px] font-bold text-green-700 tracking-[0.6px] uppercase font-jakarta-bold">
+                      Nearby matching
+                    </Text>
+                    <Text className="mt-1 text-sm text-green-950 font-jakarta-semibold">
+                      {taskLocation.loading
+                        ? "Detecting your current area..."
+                        : taskLocation.label || "Allow location to match nearby freelancers"}
+                    </Text>
+                    <Text className="mt-1 text-xs text-green-700 font-jakarta leading-5">
+                      Jobs posted with location reach freelancers closest to you first and appear as In your Area on their side.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => void loadTaskLocation()}
+                    className="w-11 h-11 rounded-full bg-white items-center justify-center border border-green-200"
+                    activeOpacity={0.8}
+                  >
+                    {taskLocation.loading ? (
+                      <ActivityIndicator size="small" color="#1A7F5A" />
+                    ) : (
+                      <Ionicons name="locate-outline" size={19} color="#1A7F5A" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
             </Card>
 
             {/* SPECIALIST */}

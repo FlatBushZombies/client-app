@@ -47,6 +47,10 @@ const NotificationsScreen = () => {
   const getNotificationIcon = (message: string) => {
     const normalized = message.toLowerCase()
 
+    if (normalized.includes("in your area")) {
+      return { name: "location" as const, color: "#15803D", bg: "#DCFCE7" }
+    }
+
     if (normalized.includes("applied")) {
       return { name: "person-add" as const, color: "#3B82F6", bg: "#DBEAFE" }
     }
@@ -68,6 +72,13 @@ const NotificationsScreen = () => {
 
   const getNotificationCopy = (message: string) => {
     const normalized = message.toLowerCase()
+
+    if (normalized.includes("in your area")) {
+      return {
+        title: "In your area",
+        body: message,
+      }
+    }
 
     if (normalized.includes("accepted") && (normalized.includes("phone number") || normalized.includes("contact"))) {
       return {
@@ -118,6 +129,7 @@ const NotificationsScreen = () => {
   const renderNotification = ({ item }: { item: any }) => {
     const iconData = getNotificationIcon(item.message)
     const copy = getNotificationCopy(item.message)
+    const showAreaBadge = item.message.toLowerCase().includes("in your area")
 
     return (
       <TouchableOpacity
@@ -177,6 +189,21 @@ const NotificationsScreen = () => {
             >
               {copy.body}
             </Text>
+
+            {showAreaBadge ? (
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 999,
+                  backgroundColor: "#ECFDF5",
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#15803D" }}>In your Area</Text>
+              </View>
+            ) : null}
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="time-outline" size={14} color="#9CA3AF" />

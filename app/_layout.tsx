@@ -27,6 +27,15 @@ LogBox.ignoreLogs(["Clerk:"]);
 function getNotificationBannerCopy(message: string) {
   const normalized = message.toLowerCase();
 
+  if (normalized.includes("in your area")) {
+    return {
+      title: "In your area",
+      body: message,
+      accent: "#15803D",
+      background: "#ECFDF5",
+    };
+  }
+
   if (normalized.includes("accepted") && (normalized.includes("phone number") || normalized.includes("contact"))) {
     return {
       title: "Offer accepted",
