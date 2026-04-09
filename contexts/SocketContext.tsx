@@ -31,9 +31,11 @@ interface SocketContextType {
   notifications: Notification[];
   unreadCount: number;
   connected: boolean;
+  activeNotification: Notification | null;
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearNotifications: () => void;
+  dismissActiveNotification: () => void;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -73,9 +75,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [connected, setConnected] = useState(false);
+  const [activeNotification, setActiveNotification] = useState<Notification | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const getTokenRef = useRef(getToken);
   const userIdRef = useRef<string | null>(user?.id ?? null);
+  const hasLoadedRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+  const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     getTokenRef.current = getToken;
@@ -84,6 +90,27 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     userIdRef.current = user?.id ?? null;
   }, [user?.id]);
+
+  const dismissActiveNotification = useCallback(() => {
+    if (bannerTimeoutRef.current) {
+      clearTimeout(bannerTimeoutRef.current);
+      bannerTimeoutRef.current = null;
+    }
+
+    setActiveNotification(null);
+  }, []);
+
+  const showInAppNotification = useCallback((notification: Notification) => {
+    if (bannerTimeoutRef.current) {
+      clearTimeout(bannerTimeoutRef.current);
+    }
+
+    setActiveNotification(notification);
+    bannerTimeoutRef.current = setTimeout(() => {
+      setActiveNotification((current) => (current?.id === notification.id ? null : current));
+      bannerTimeoutRef.current = null;
+    }, 3500);
+  }, []);
 
   const refreshNotifications = useCallback(async () => {
     if (!user?.id) {
@@ -102,11 +129,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data?.message || data?.error || "Failed to fetch notifications");
       }
 
-      setNotifications((current) => mergeNotifications(current, data.notifications));
+      setNotifications((current) => {
+        const knownIds = new Set(current.map((notification) => notification.id));
+        const nextNotifications = mergeNotifications(current, data.notifications);
+        const newestFreshNotification = data.notifications.find(
+          (notification: Notification) => !knownIds.has(notification.id)
+        );
+
+        if (hasLoadedRef.current && appStateRef.current === "active" && newestFreshNotification) {
+          showInAppNotification(newestFreshNotification);
+        }
+
+        return nextNotifications;
+      });
+      hasLoadedRef.current = true;
     } catch (error) {
       console.error("[Notifications] Error fetching notifications", error);
     }
-  }, [user?.id]);
+  }, [showInAppNotification, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -121,6 +161,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }, POLL_INTERVAL_MS);
 
     const subscription = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
       if (nextState === "active") {
         void refreshNotifications();
       }
@@ -186,6 +227,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         }
 
         setNotifications((current) => mergeNotifications(current, [payload.notification!]));
+
+        if (hasLoadedRef.current && appStateRef.current === "active") {
+          showInAppNotification(payload.notification);
+        }
       });
     })();
 
@@ -201,6 +246,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setConnected(false);
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (bannerTimeoutRef.current) {
+        clearTimeout(bannerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const markAsRead = useCallback(async (notificationId: number) => {
     setNotifications((current) =>
@@ -264,12 +317,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       notifications,
       unreadCount: notifications.filter((notification) => !notification.read).length,
       connected,
+      activeNotification,
       markAsRead,
       markAllAsRead,
       clearNotifications,
+      dismissActiveNotification,
       refreshNotifications,
     }),
-    [clearNotifications, connected, markAllAsRead, markAsRead, notifications, refreshNotifications]
+    [
+      activeNotification,
+      clearNotifications,
+      connected,
+      dismissActiveNotification,
+      markAllAsRead,
+      markAsRead,
+      notifications,
+      refreshNotifications,
+    ]
   );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

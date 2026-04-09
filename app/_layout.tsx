@@ -1,9 +1,9 @@
-import { SplashScreen, Stack } from "expo-router";
+import { router, SplashScreen, Stack } from "expo-router";
 import './globals.css';
 import { ClerkProvider } from "@clerk/clerk-expo";
-import { LogBox } from "react-native";
+import { LogBox, Pressable, Text, View } from "react-native";
 import { tokenCache } from "@/lib/auth";
-import { SocketProvider } from "@/contexts/SocketContext";
+import { SocketProvider, useSocket } from "@/contexts/SocketContext";
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -23,6 +23,145 @@ if (!publishableKey) {
 }
 
 LogBox.ignoreLogs(["Clerk:"]);
+
+function getNotificationBannerCopy(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("accepted") && (normalized.includes("phone number") || normalized.includes("contact"))) {
+    return {
+      title: "Offer accepted",
+      body: "Accepted and ready for direct contact.",
+      accent: "#10B981",
+      background: "#ECFDF5",
+    };
+  }
+
+  if (normalized.includes("accepted")) {
+    return {
+      title: "Offer accepted",
+      body: "Your latest offer update is ready.",
+      accent: "#10B981",
+      background: "#ECFDF5",
+    };
+  }
+
+  if (normalized.includes("rejected")) {
+    return {
+      title: "Offer rejected",
+      body: "A client declined an offer update.",
+      accent: "#EF4444",
+      background: "#FEF2F2",
+    };
+  }
+
+  if (normalized.includes("phone number") || normalized.includes("contact")) {
+    return {
+      title: "Contact shared",
+      body: "Direct contact details are now available.",
+      accent: "#0EA5E9",
+      background: "#F0F9FF",
+    };
+  }
+
+  return {
+    title: "New notification",
+    body: message,
+    accent: "#2563EB",
+    background: "#EFF6FF",
+  };
+}
+
+function InAppNotificationBanner() {
+  const { activeNotification, dismissActiveNotification } = useSocket();
+
+  if (!activeNotification) {
+    return null;
+  }
+
+  const copy = getNotificationBannerCopy(activeNotification.message);
+
+  return (
+    <Pressable
+      onPress={() => {
+        dismissActiveNotification();
+        router.push("/(root)/notifications");
+      }}
+      style={{
+        position: "absolute",
+        top: 54,
+        left: 16,
+        right: 16,
+        zIndex: 1000,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        backgroundColor: "#ffffff",
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 18,
+        elevation: 8,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        <View
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: 999,
+            backgroundColor: copy.accent,
+            marginTop: 4,
+            marginRight: 12,
+          }}
+        />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: "#111827",
+              fontSize: 14,
+              fontFamily: "PlusJakartaSans-Bold",
+              marginBottom: 2,
+            }}
+          >
+            {copy.title}
+          </Text>
+          <Text
+            style={{
+              color: "#4B5563",
+              fontSize: 13,
+              lineHeight: 18,
+              fontFamily: "PlusJakartaSans-Medium",
+            }}
+          >
+            {copy.body}
+          </Text>
+        </View>
+        <View
+          style={{
+            marginLeft: 12,
+            alignSelf: "center",
+            borderRadius: 999,
+            backgroundColor: copy.background,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+          }}
+        >
+          <Text
+            style={{
+              color: copy.accent,
+              fontSize: 11,
+              fontFamily: "PlusJakartaSans-SemiBold",
+            }}
+          >
+            View
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -55,6 +194,7 @@ export default function RootLayout() {
 
         {/* App content renders behind the splash; revealed once it fades out */}
         <Stack screenOptions={{ headerShown: false }} />
+        {splashAnimDone ? <InAppNotificationBanner /> : null}
 
         {/* Custom animated splash sits on top (z-[9999]) and fades itself out */}
         {!splashAnimDone && (
