@@ -7,20 +7,16 @@ import { router } from "expo-router"
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Linking,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  useColorScheme,
 } from "react-native"
-import { useSocket } from "@/contexts/SocketContext"
 import { getApiUrl } from "@/lib/fetch"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ApplicationStatus = "pending" | "accepted" | "rejected"
 
@@ -28,6 +24,23 @@ interface ApplicationSpotlight {
   score: number
   badges: string[]
   summary: string
+}
+
+interface ReviewSummary {
+  averageRating: number
+  reviewCount: number
+  latestReview?: {
+    rating: number
+    comment: string
+    reviewerName: string
+    createdAt: string
+  } | null
+}
+
+interface ClientDecision {
+  shortlisted: boolean
+  privateNote: string
+  updatedAt?: string | null
 }
 
 interface ContactExchange {
@@ -55,6 +68,8 @@ interface Application {
   updatedAt?: string
   applicationSpotlight?: ApplicationSpotlight
   contactExchange?: ContactExchange
+  clientDecision?: ClientDecision
+  freelancerReviewSummary?: ReviewSummary
 }
 
 interface ApplicationSummary {
@@ -78,7 +93,10 @@ interface ContactDraft {
   contactInstructions: string
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface ReviewDraft {
+  rating: number
+  comment: string
+}
 
 function buildSummary(applications: Application[]): ApplicationSummary {
   return applications.reduce(
@@ -99,166 +117,166 @@ function formatRelativeDate(dateString: string) {
   if (diffMins < 1) return "just now"
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays === 1) return "yesterday"
   if (diffDays < 7) return `${diffDays}d ago`
   return new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
-function getTopSignal(job: Job) {
-  return [...job.applications]
-    .sort((l, r) => (r.applicationSpotlight?.score || 0) - (l.applicationSpotlight?.score || 0))
-    .at(0)
-}
-
-const AVATAR_PALETTES = [
-  { bg: "#1C1C2E", text: "#fff" },
-  { bg: "#0A2342", text: "#fff" },
-  { bg: "#1A2E1A", text: "#fff" },
-  { bg: "#2E1A1A", text: "#fff" },
-  { bg: "#1E1A2E", text: "#fff" },
-  { bg: "#2E241A", text: "#fff" },
-  { bg: "#0D2B2B", text: "#fff" },
-  { bg: "#2B0D1A", text: "#fff" },
-]
-
-function avatarPalette(name: string) {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length]
-}
-
-// ─── StatusPill ───────────────────────────────────────────────────────────────
-
 function StatusPill({ status }: { status: ApplicationStatus }) {
   const config = {
-    accepted: {
-      containerClass: "bg-emerald-50 border border-emerald-200",
-      textClass: "text-emerald-700",
-      dot: "#059669",
-    },
-    rejected: {
-      containerClass: "bg-rose-50 border border-rose-200",
-      textClass: "text-rose-600",
-      dot: "#e11d48",
-    },
-    pending: {
-      containerClass: "bg-amber-50 border border-amber-200",
-      textClass: "text-amber-700",
-      dot: "#d97706",
-    },
-  }
-  const c = config[status]
+    accepted: { bg: "#DCFCE7", text: "#166534" },
+    pending: { bg: "#FEF3C7", text: "#92400E" },
+    rejected: { bg: "#FEE2E2", text: "#B91C1C" },
+  }[status]
+
   return (
-    <View className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full self-start ${c.containerClass}`}>
-      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.dot }} />
-      <Text className={`text-xs font-semibold capitalize tracking-wide ${c.textClass}`}>{status}</Text>
+    <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: config.bg }}>
+      <Text className="text-xs font-bold capitalize" style={{ color: config.text }}>
+        {status}
+      </Text>
     </View>
   )
 }
 
-// ─── BadgePill ────────────────────────────────────────────────────────────────
+function MetricCard({ label, value, tone }: { label: string; value: number; tone: string }) {
+  const colors =
+    tone === "green"
+      ? { bg: "#ECFDF5", text: "#166534" }
+      : tone === "amber"
+      ? { bg: "#FFFBEB", text: "#92400E" }
+      : { bg: "#EFF6FF", text: "#1D4ED8" }
 
-function BadgePill({ label }: { label: string }) {
-  let cls = "bg-sky-50 border border-sky-200"
-  let textCls = "text-sky-700"
-  if (label.includes("Budget") || label.includes("Quote")) {
-    cls = "bg-emerald-50 border border-emerald-200"; textCls = "text-emerald-700"
-  } else if (label.includes("Contact")) {
-    cls = "bg-amber-50 border border-amber-200"; textCls = "text-amber-700"
-  }
   return (
-    <View className={`px-3 py-1 rounded-full ${cls}`}>
-      <Text className={`text-xs font-semibold ${textCls}`}>{label}</Text>
+    <View className="flex-1 rounded-3xl p-4" style={{ backgroundColor: colors.bg }}>
+      <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+        {value}
+      </Text>
+      <Text className="mt-1 text-xs font-semibold uppercase tracking-[1px]" style={{ color: colors.text }}>
+        {label}
+      </Text>
     </View>
   )
 }
 
-// ─── ScoreRing ────────────────────────────────────────────────────────────────
-
-function ScoreRing({ score }: { score: number }) {
-  const color = score >= 75 ? "#059669" : score >= 50 ? "#d97706" : "#6b7280"
+function StarPicker({
+  rating,
+  onChange,
+}: {
+  rating: number
+  onChange: (value: number) => void
+}) {
   return (
-    <View
-      className="w-12 h-12 rounded-full items-center justify-center"
-      style={{ borderWidth: 2.5, borderColor: color }}
-    >
-      <Text style={{ fontSize: 13, fontWeight: "700", color }}>{score}</Text>
+    <View className="flex-row gap-2">
+      {[1, 2, 3, 4, 5].map((value) => (
+        <TouchableOpacity key={value} onPress={() => onChange(value)}>
+          <Ionicons
+            name={value <= rating ? "star" : "star-outline"}
+            size={20}
+            color={value <= rating ? "#F59E0B" : "#CBD5E1"}
+          />
+        </TouchableOpacity>
+      ))}
     </View>
   )
 }
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ApplicationsScreen() {
   const { user } = useUser()
   const { getToken } = useAuth()
-  const { unreadCount } = useSocket()
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [updatingStatus, setUpdatingStatus] = useState<{
-    id: number
-    action: Extract<ApplicationStatus, "accepted" | "rejected">
-  } | null>(null)
-  const [sharingContactId, setSharingContactId] = useState<number | null>(null)
-  const [expandedContactId, setExpandedContactId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<number | null>(null)
+  const [expandedContactId, setExpandedContactId] = useState<number | null>(null)
+  const [sharingContactId, setSharingContactId] = useState<number | null>(null)
+  const [savingMetaId, setSavingMetaId] = useState<number | null>(null)
+  const [submittingReviewId, setSubmittingReviewId] = useState<number | null>(null)
   const [contactDrafts, setContactDrafts] = useState<Record<number, ContactDraft>>({})
+  const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({})
+  const [reviewDrafts, setReviewDrafts] = useState<Record<number, ReviewDraft>>({})
 
-  const ensureDraft = (application: Application) => {
+  const mergeUpdatedApplication = (updatedApplication: Application) => {
+    setJobs((currentJobs) =>
+      currentJobs.map((job) => {
+        if (job.id !== updatedApplication.jobId) {
+          return job
+        }
+
+        const applications = job.applications.map((application) =>
+          application.id === updatedApplication.id ? updatedApplication : application
+        )
+
+        return {
+          ...job,
+          applications,
+          applicationSummary: buildSummary(applications),
+        }
+      })
+    )
+  }
+
+  const ensureContactDraft = (application: Application) => {
     setContactDrafts((current) => {
-      if (current[application.id]) return current
+      if (current[application.id]) {
+        return current
+      }
+
       return {
         ...current,
         [application.id]: {
           phoneNumber: application.contactExchange?.phoneNumber || "",
-          contactName: application.contactExchange?.contactName || user?.fullName || user?.firstName || "",
+          contactName:
+            application.contactExchange?.contactName || user?.fullName || user?.firstName || "",
           contactInstructions: application.contactExchange?.contactInstructions || "",
         },
       }
     })
   }
 
-  const updateDraft = (applicationId: number, field: keyof ContactDraft, value: string) => {
-    setContactDrafts((current) => ({
-      ...current,
-      [applicationId]: {
-        phoneNumber: current[applicationId]?.phoneNumber || "",
-        contactName: current[applicationId]?.contactName || "",
-        contactInstructions: current[applicationId]?.contactInstructions || "",
-        [field]: value,
-      },
-    }))
-  }
+  const ensureReviewDraft = (application: Application) => {
+    setReviewDrafts((current) => {
+      if (current[application.id]) {
+        return current
+      }
 
-  const mergeUpdatedApplication = (updatedApplication: Application) => {
-    setJobs((currentJobs) =>
-      currentJobs.map((job) => {
-        if (job.id !== updatedApplication.jobId) return job
-        const applications = job.applications.map((a) =>
-          a.id === updatedApplication.id ? updatedApplication : a
-        )
-        return { ...job, applications, applicationSummary: buildSummary(applications) }
-      })
-    )
+      return {
+        ...current,
+        [application.id]: {
+          rating: 5,
+          comment: "",
+        },
+      }
+    })
   }
 
   const fetchApplications = async () => {
     try {
       setError(null)
-      if (!user?.id) { setLoading(false); setRefreshing(false); return }
+      if (!user?.id) {
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
       const token = await getToken()
       const response = await fetch(getApiUrl("/api/applications/client"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       })
       const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to fetch applications")
-      const jobsData = (data.data || []).map((job: Job) => ({
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to fetch applications")
+      }
+
+      const nextJobs = (data.data || []).map((job: Job) => ({
         ...job,
         applicationSummary: job.applicationSummary || buildSummary(job.applications || []),
       }))
-      setJobs(jobsData)
+
+      setJobs(nextJobs)
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Failed to load applications")
       setJobs([])
@@ -269,87 +287,188 @@ export default function ApplicationsScreen() {
   }
 
   useEffect(() => {
-    if (!user?.id) return
-    const load = async () => {
-      const token = await getToken()
-      const response = await fetch(getApiUrl("/api/applications/client"), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to fetch applications")
-      const jobsData = (data.data || []).map((job: Job) => ({
-        ...job,
-        applicationSummary: job.applicationSummary || buildSummary(job.applications || []),
-      }))
-      setJobs(jobsData)
-      setError(null)
-      setLoading(false)
-      setRefreshing(false)
+    if (!user?.id) {
+      return
     }
-    load().catch((err) => {
-      setError(err instanceof Error ? err.message : "Failed to load applications")
-      setJobs([])
-      setLoading(false)
-      setRefreshing(false)
-    })
-    const poll = setInterval(() => load().catch(console.error), 10000)
-    return () => clearInterval(poll)
-  }, [getToken, user?.id])
 
-  const onRefresh = () => { setRefreshing(true); fetchApplications() }
+    fetchApplications().catch(() => undefined)
+    const timer = setInterval(() => {
+      fetchApplications().catch(() => undefined)
+    }, 10000)
 
-  const updateApplicationStatus = async (
-    application: Application,
-    status: Extract<ApplicationStatus, "accepted" | "rejected">
-  ) => {
-    setUpdatingStatus({ id: application.id, action: status })
+    return () => clearInterval(timer)
+  }, [user?.id])
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    fetchApplications().catch(() => undefined)
+  }
+
+  const updateApplicationStatus = async (application: Application, status: "accepted" | "rejected") => {
+    setUpdatingStatus(application.id)
+
     try {
       const token = await getToken()
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/status`), {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ status }),
       })
       const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.error || data.message || "Failed to update status")
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to update application")
+      }
+
       mergeUpdatedApplication(data.data)
-      if (status === "accepted") { ensureDraft(data.data); setExpandedContactId(data.data.id) }
-      else setExpandedContactId((c) => (c === application.id ? null : c))
-    } catch (err) {
-      Alert.alert("Could not update application", err instanceof Error ? err.message : "Please try again.")
+      if (status === "accepted") {
+        ensureContactDraft(data.data)
+        ensureReviewDraft(data.data)
+        setExpandedContactId(data.data.id)
+      }
+    } catch (statusError) {
+      Alert.alert(
+        "Unable to update application",
+        statusError instanceof Error ? statusError.message : "Please try again."
+      )
     } finally {
       setUpdatingStatus(null)
     }
   }
 
+  const updateClientMeta = async (application: Application, updates: Partial<ClientDecision>) => {
+    setSavingMetaId(application.id)
+
+    try {
+      const token = await getToken()
+      const response = await fetch(getApiUrl(`/api/applications/${application.id}/client-meta`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to save shortlist and notes")
+      }
+
+      mergeUpdatedApplication(data.data)
+      setNoteDrafts((current) => ({
+        ...current,
+        [application.id]: data.data.clientDecision?.privateNote || "",
+      }))
+    } catch (metaError) {
+      Alert.alert(
+        "Unable to save changes",
+        metaError instanceof Error ? metaError.message : "Please try again."
+      )
+    } finally {
+      setSavingMetaId(null)
+    }
+  }
+
   const shareContactDetails = async (application: Application) => {
     const draft = contactDrafts[application.id]
+
     if (!draft?.phoneNumber?.trim()) {
-      Alert.alert("Phone number required", "Enter the number the freelancer should use.")
+      Alert.alert("Phone number required", "Add the number the freelancer should use.")
       return
     }
+
     setSharingContactId(application.id)
+
     try {
       const token = await getToken()
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/contact`), {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ phoneNumber: draft.phoneNumber, contactName: draft.contactName, contactInstructions: draft.contactInstructions }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(draft),
       })
       const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to share contact details")
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to share contact details")
+      }
+
       mergeUpdatedApplication(data.data)
       setExpandedContactId(null)
-      Alert.alert("Direct contact unlocked", "The freelancer can now reach you directly.")
-    } catch (err) {
-      Alert.alert("Could not share contact", err instanceof Error ? err.message : "Please try again.")
+      Alert.alert("Direct contact unlocked", "The freelancer can now call you directly.")
+    } catch (contactError) {
+      Alert.alert(
+        "Unable to share contact",
+        contactError instanceof Error ? contactError.message : "Please try again."
+      )
     } finally {
       setSharingContactId(null)
     }
   }
 
-  const openConversation = (application: Application, job: Job) => {
-    if (!application.conversationId) return
+  const submitReview = async (application: Application) => {
+    const draft = reviewDrafts[application.id]
+    if (!draft?.rating) {
+      Alert.alert("Rating required", "Choose a rating before saving the review.")
+      return
+    }
+
+    setSubmittingReviewId(application.id)
+
+    try {
+      const token = await getToken()
+      const response = await fetch(getApiUrl(`/api/applications/${application.id}/reviews`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(draft),
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to save review")
+      }
+
+      Alert.alert("Review saved", "Your rating has been shared with the freelancer.")
+      await fetchApplications()
+    } catch (reviewError) {
+      Alert.alert(
+        "Unable to save review",
+        reviewError instanceof Error ? reviewError.message : "Please try again."
+      )
+    } finally {
+      setSubmittingReviewId(null)
+    }
+  }
+
+  const openDialer = async (phoneNumber: string | null | undefined) => {
+    if (!phoneNumber) {
+      return
+    }
+
+    const target = `tel:${phoneNumber}`
+    const supported = await Linking.canOpenURL(target)
+    if (!supported) {
+      Alert.alert("Phone not supported", "This device cannot place phone calls directly.")
+      return
+    }
+
+    Linking.openURL(target)
+  }
+
+  const openCoordinationBoard = (application: Application, job: Job) => {
+    if (!application.conversationId) {
+      return
+    }
+
     router.push({
       pathname: "/(root)/chat",
       params: {
@@ -361,525 +480,441 @@ export default function ApplicationsScreen() {
     })
   }
 
-  const openDialer = async (phoneNumber: string | null | undefined) => {
-    if (!phoneNumber) return
-    const target = `tel:${phoneNumber}`
-    const supported = await Linking.canOpenURL(target)
-    if (!supported) { Alert.alert("Phone not supported", "This device cannot place phone calls directly."); return }
-    Linking.openURL(target)
-  }
-
-  // ─── Signal Deck ───────────────────────────────────────────────────────────
-
-  const allApplications = jobs.flatMap((j) => j.applications)
-  const readyToCallCount = allApplications.filter((a) => a.contactExchange?.readyForDirectContact).length
-  const awaitingPhoneCount = allApplications.filter((a) => a.contactExchange?.needsClientPhoneNumber).length
-  const standoutCount = allApplications.filter((a) => (a.applicationSpotlight?.score || 0) >= 75).length
-
-  const renderSignalDeck = () => (
-    <View className="px-4 pt-5 pb-2">
-      <Text className="text-xs font-bold text-neutral-400 tracking-widest uppercase mb-3">
-        Hire signals
-      </Text>
-      <View className="flex-row gap-3">
-        {[
-          {
-            label: "Ready to call",
-            value: readyToCallCount,
-            icon: "call-outline" as const,
-            iconColor: "#059669",
-            valueClass: "text-neutral-900",
-            labelClass: "text-emerald-600",
-            containerClass: "bg-white border border-neutral-100",
-            accentBar: "bg-emerald-500",
-          },
-          {
-            label: "Need your number",
-            value: awaitingPhoneCount,
-            icon: "key-outline" as const,
-            iconColor: "#d97706",
-            valueClass: "text-neutral-900",
-            labelClass: "text-amber-600",
-            containerClass: "bg-white border border-neutral-100",
-            accentBar: "bg-amber-400",
-          },
-          {
-            label: "Standout bids",
-            value: standoutCount,
-            icon: "sparkles-outline" as const,
-            iconColor: "#2563eb",
-            valueClass: "text-neutral-900",
-            labelClass: "text-blue-600",
-            containerClass: "bg-white border border-neutral-100",
-            accentBar: "bg-blue-500",
-          },
-        ].map((item) => (
-          <View
-            key={item.label}
-            className={`flex-1 rounded-2xl p-4 overflow-hidden ${item.containerClass}`}
-            style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }}
-          >
-            {/* Top accent line */}
-            <View className={`absolute top-0 left-0 right-0 h-0.5 ${item.accentBar}`} />
-            <Ionicons name={item.icon} size={16} color={item.iconColor} />
-            <Text className={`mt-3 text-3xl font-bold tracking-tight ${item.valueClass}`}>{item.value}</Text>
-            <Text className={`mt-1 text-xs font-semibold leading-tight ${item.labelClass}`}>{item.label}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  )
-
-  // ─── Spotlight ─────────────────────────────────────────────────────────────
-
-  const renderSpotlight = (application: Application) => {
-    if (!application.applicationSpotlight) return null
-    return (
-      <View
-        className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 mb-4"
-        style={{ shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}
-      >
-        <View className="flex-row items-start gap-3">
-          <ScoreRing score={application.applicationSpotlight.score} />
-          <Text className="flex-1 text-sm text-neutral-600 leading-5 mt-1">
-            {application.applicationSpotlight.summary}
-          </Text>
-        </View>
-        {(application.applicationSpotlight.badges || []).length > 0 && (
-          <View className="flex-row flex-wrap gap-2 mt-3 pt-3 border-t border-neutral-100">
-            {application.applicationSpotlight.badges.map((badge) => (
-              <BadgePill key={badge} label={badge} />
-            ))}
-          </View>
-        )}
-      </View>
-    )
-  }
-
-  // ─── Contact Composer ──────────────────────────────────────────────────────
-
-  const renderContactComposer = (application: Application) => {
-    if (expandedContactId !== application.id) return null
-    const draft = contactDrafts[application.id] || {
-      phoneNumber: "",
-      contactName: user?.fullName || user?.firstName || "",
-      contactInstructions: "",
-    }
-    return (
-      <View
-        className="bg-amber-50 rounded-2xl p-5 border border-amber-200 mt-4"
-        style={{ shadowColor: "#d97706", shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } }}
-      >
-        <View className="flex-row items-center gap-2 mb-1">
-          <Ionicons name="phone-portrait-outline" size={16} color="#d97706" />
-          <Text className="text-base font-bold text-amber-800">Share your contact number</Text>
-        </View>
-        <Text className="text-sm text-amber-700 leading-5 mb-5 opacity-80">
-          This application is accepted. Add the best number for direct follow-up.
-        </Text>
-
-        <TextInput
-          value={draft.phoneNumber}
-          onChangeText={(v) => updateDraft(application.id, "phoneNumber", v)}
-          placeholder="Phone number"
-          keyboardType="phone-pad"
-          placeholderTextColor="#d97706"
-          className="bg-white rounded-xl border border-amber-200 px-4 py-3.5 text-neutral-900 text-base mb-3"
-          style={{ fontWeight: "500" }}
-        />
-        <TextInput
-          value={draft.contactName}
-          onChangeText={(v) => updateDraft(application.id, "contactName", v)}
-          placeholder="Contact name"
-          placeholderTextColor="#d97706"
-          className="bg-white rounded-xl border border-amber-200 px-4 py-3.5 text-neutral-900 text-base mb-3"
-        />
-        <TextInput
-          value={draft.contactInstructions}
-          onChangeText={(v) => updateDraft(application.id, "contactInstructions", v)}
-          placeholder="Best time to call or extra instructions"
-          placeholderTextColor="#d97706"
-          multiline
-          textAlignVertical="top"
-          className="bg-white rounded-xl border border-amber-200 px-4 py-3.5 text-neutral-900 text-sm mb-5"
-          style={{ minHeight: 88 }}
-        />
-
-        <View className="flex-row gap-3">
-          <TouchableOpacity
-            onPress={() => setExpandedContactId(null)}
-            className="flex-1 rounded-xl py-3.5 bg-white border border-amber-200 items-center"
-          >
-            <Text className="text-sm font-semibold text-amber-700">Later</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => shareContactDetails(application)}
-            disabled={sharingContactId === application.id}
-            className="flex-[1.3] rounded-xl py-3.5 items-center"
-            style={{ backgroundColor: "#d97706" }}
-          >
-            {sharingContactId === application.id
-              ? <ActivityIndicator color="#FFF" size="small" />
-              : <Text className="text-sm font-bold text-white">Share contact</Text>}
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
-
-  // ─── Shared Contact ────────────────────────────────────────────────────────
-
-  const renderSharedContact = (application: Application) => {
-    if (!application.contactExchange?.readyForDirectContact) return null
-    return (
-      <View
-        className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 mt-4"
-        style={{ shadowColor: "#059669", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 3 } }}
-      >
-        <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-7 h-7 rounded-full bg-emerald-500 items-center justify-center">
-            <Ionicons name="call" size={13} color="#fff" />
-          </View>
-          <Text className="text-sm font-bold text-emerald-800">Direct contact unlocked</Text>
-        </View>
-        <Text className="text-sm text-emerald-700 mb-1">
-          {application.contactExchange.contactName || "Client"}
-        </Text>
-        <Text className="text-base font-bold text-emerald-900 mb-2">
-          {application.contactExchange.phoneNumber || application.contactExchange.maskedPhoneNumber}
-        </Text>
-        {application.contactExchange.contactInstructions ? (
-          <Text className="text-xs text-emerald-700 leading-5 mb-4 opacity-80">
-            {application.contactExchange.contactInstructions}
-          </Text>
-        ) : <View className="mb-3" />}
-        <View className="flex-row gap-3">
-          <TouchableOpacity
-            onPress={() => setExpandedContactId(application.id)}
-            className="flex-1 rounded-xl py-3 bg-white border border-emerald-200 items-center"
-          >
-            <Text className="text-xs font-semibold text-emerald-700">Update</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => openDialer(application.contactExchange?.phoneNumber)}
-            className="flex-1 rounded-xl py-3 bg-emerald-600 items-center"
-          >
-            <Text className="text-xs font-bold text-white">Call number</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
-
-  // ─── Application Card ──────────────────────────────────────────────────────
-
-  const renderApplication = (application: Application, job: Job) => {
-    const palette = avatarPalette(application.freelancerName)
-    const isPending = application.status === "pending"
-    const isAccepted = application.status === "accepted"
-    const needsPhone = isAccepted && !application.contactExchange?.readyForDirectContact
-    const isUpdatingThisApplication = updatingStatus?.id === application.id
-    const isAcceptLoading =
-      updatingStatus?.id === application.id && updatingStatus?.action === "accepted"
-    const isRejectLoading =
-      updatingStatus?.id === application.id && updatingStatus?.action === "rejected"
-
-    return (
-      <View
-        key={application.id}
-        className="bg-white rounded-3xl p-5 mb-3 border border-neutral-100"
-        style={{
-          shadowColor: "#000",
-          shadowOpacity: 0.07,
-          shadowRadius: 20,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 3,
-        }}
-      >
-        {/* Header */}
-        <View className="flex-row items-start gap-3 mb-5">
-          <View
-            className="w-12 h-12 rounded-2xl items-center justify-center"
-            style={{ backgroundColor: palette.bg }}
-          >
-            <Text style={{ fontSize: 20, fontWeight: "700", color: palette.text }}>
-              {application.freelancerName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-bold text-neutral-900 mb-0.5">
-              {application.freelancerName}
-            </Text>
-            <Text className="text-xs text-neutral-400 mb-1.5">
-              {application.freelancerEmail || "No email provided"}
-            </Text>
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="time-outline" size={11} color="#a3a3a3" />
-              <Text className="text-xs text-neutral-400">Applied {formatRelativeDate(application.createdAt)}</Text>
-            </View>
-          </View>
-          <StatusPill status={application.status} />
-        </View>
-
-        {renderSpotlight(application)}
-
-        {/* Quotation */}
-        {application.quotation ? (
-          <View className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 mb-3">
-            <View className="flex-row items-center gap-2 mb-2">
-              <Ionicons name="cash-outline" size={14} color="#059669" />
-              <Text className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Quotation</Text>
-            </View>
-            <Text className="text-base font-bold text-emerald-900">{application.quotation}</Text>
-          </View>
-        ) : null}
-
-        {/* Conditions */}
-        {application.conditions ? (
-          <View className="bg-sky-50 rounded-2xl p-4 border border-sky-100 mb-4">
-            <View className="flex-row items-center gap-2 mb-2">
-              <Ionicons name="document-text-outline" size={14} color="#2563eb" />
-              <Text className="text-xs font-bold text-sky-700 uppercase tracking-widest">Terms & Conditions</Text>
-            </View>
-            <Text className="text-sm text-sky-800 leading-5">{application.conditions}</Text>
-          </View>
-        ) : null}
-
-        {renderSharedContact(application)}
-        {renderContactComposer(application)}
-
-        {/* Divider */}
-        <View className="h-px bg-neutral-100 mt-5 mb-4" />
-
-        {/* Actions */}
-        <View className="gap-3">
-          {/* Message button */}
-          <TouchableOpacity
-            onPress={() => openConversation(application, job)}
-            activeOpacity={0.8}
-            className={`rounded-2xl py-3.5 items-center border ${
-              isPending
-                ? "bg-neutral-50 border-neutral-200"
-                : "bg-neutral-900 border-neutral-900"
-            }`}
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={15}
-                color={isPending ? "#737373" : "#fff"}
-              />
-              <Text className={`text-sm font-semibold ${isPending ? "text-neutral-500" : "text-white"}`}>
-                Message Freelancer
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Pending actions */}
-          {isPending ? (
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => updateApplicationStatus(application, "accepted")}
-                disabled={isUpdatingThisApplication}
-                className="flex-[2] rounded-2xl py-4 items-center bg-emerald-600"
-                style={{ shadowColor: "#059669", shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
-              >
-                {isAcceptLoading
-                  ? <ActivityIndicator color="#FFF" size="small" />
-                  : <Text className="text-white text-sm font-bold">Accept</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => updateApplicationStatus(application, "rejected")}
-                disabled={isUpdatingThisApplication}
-                className="flex-1 rounded-2xl py-4 items-center bg-rose-50 border border-rose-200"
-              >
-                {isRejectLoading
-                  ? <ActivityIndicator color="#e11d48" size="small" />
-                  : <Text className="text-rose-600 text-sm font-semibold">Reject</Text>}
-              </TouchableOpacity>
-            </View>
-          ) : needsPhone ? (
-            <TouchableOpacity
-              onPress={() => { ensureDraft(application); setExpandedContactId(application.id) }}
-              className="rounded-2xl py-4 bg-amber-50 border border-amber-200 items-center"
-            >
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="call-outline" size={15} color="#d97706" />
-                <Text className="text-sm font-bold text-amber-700">Add phone number for follow-up</Text>
-              </View>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
-    )
-  }
-
-  // ─── Job Group ─────────────────────────────────────────────────────────────
-
-  const renderJob = ({ item: job }: { item: Job }) => {
-    const topSignal = getTopSignal(job)
-    const summary = job.applicationSummary || buildSummary(job.applications)
-
-    return (
-      <View className="mb-8">
-        {/* Job Header */}
-        <View
-          className="rounded-3xl overflow-hidden mb-4"
-          style={{
-            backgroundColor: "#0F0F1A",
-            shadowColor: "#000",
-            shadowOpacity: 0.18,
-            shadowRadius: 24,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 6,
-          }}
-        >
-          {/* Subtle noise texture layer via gradient */}
-          <View className="p-5">
-            <View className="flex-row items-center gap-3 mb-4">
-              <View
-                className="w-10 h-10 rounded-xl items-center justify-center"
-                style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-              >
-                <Ionicons name="briefcase-outline" size={18} color="rgba(255,255,255,0.9)" />
-              </View>
-              <Text className="flex-1 text-lg font-bold text-white tracking-tight">
-                {job.serviceType}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between mb-4">
-              <View>
-                <Text className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-1">Budget</Text>
-                <Text className="text-2xl font-bold text-white">
-                  ${job.maxPrice}
-                  <Text className="text-base font-normal text-white/50">/hr</Text>
-                </Text>
-              </View>
-              <View className="flex-row gap-2">
-                {[
-                  { count: summary.pending, label: "pending" },
-                  { count: summary.accepted, label: "accepted" },
-                  { count: summary.total, label: "total" },
-                ].filter((s) => s.count > 0).map((s) => (
-                  <View
-                    key={s.label}
-                    className="px-3 py-1.5 rounded-full"
-                    style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  >
-                    <Text className="text-xs font-semibold text-white/70">
-                      {s.count} {s.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {topSignal?.applicationSpotlight ? (
-              <View
-                className="rounded-2xl p-4"
-                style={{ backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-              >
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="sparkles" size={12} color="rgba(255,255,255,0.5)" />
-                  <Text className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                    Strongest signal
-                  </Text>
-                </View>
-                <Text className="text-sm font-bold text-white mb-1">{topSignal.freelancerName}</Text>
-                <Text className="text-xs leading-5 text-white/60">{topSignal.applicationSpotlight.summary}</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {job.applications.map((app) => renderApplication(app, job))}
-      </View>
-    )
-  }
-
-  // ─── Loading ────────────────────────────────────────────────────────────────
+  const allApplications = jobs.flatMap((job) => job.applications)
+  const shortlistedCount = allApplications.filter((application) => application.clientDecision?.shortlisted).length
+  const acceptedCount = allApplications.filter((application) => application.status === "accepted").length
+  const pendingCount = allApplications.filter((application) => application.status === "pending").length
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-[#F8FAFC]">
         <View className="flex-1 items-center justify-center gap-4">
-          <View
-            className="w-16 h-16 rounded-full bg-neutral-50 border border-neutral-100 items-center justify-center"
-            style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}
-          >
-            <ActivityIndicator size="small" color="#171717" />
-          </View>
-          <Text className="text-sm text-neutral-400 font-medium">Loading applications…</Text>
+          <ActivityIndicator size="large" color="#0F172A" />
+          <Text className="text-sm text-slate-500">Loading your hiring pipeline...</Text>
         </View>
       </SafeAreaView>
     )
   }
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
-
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View
-        className="flex-row items-center px-4 py-3.5 bg-white border-b border-neutral-100"
-        style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}
+    <SafeAreaView className="flex-1 bg-[#F8FAFC]">
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F172A" />}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-9 h-9 rounded-xl bg-neutral-100 items-center justify-center mr-3"
-        >
-          <Ionicons name="arrow-back" size={17} color="#171717" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-neutral-900 flex-1 tracking-tight">Applications</Text>
-        {unreadCount > 0 ? (
-          <View className="flex-row items-center gap-1.5 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full">
-            <View className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            <Text className="text-xs font-bold text-blue-600">{unreadCount} new</Text>
+        <View className="mb-5">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mb-4 self-start rounded-2xl bg-slate-900 px-4 py-2.5"
+          >
+            <Text className="font-bold text-white">Back</Text>
+          </TouchableOpacity>
+          <Text className="text-3xl font-bold text-slate-950">Applications</Text>
+          <Text className="mt-2 text-sm leading-6 text-slate-500">
+            Accept safely, shortlist strong candidates, keep private notes, and leave reviews after the job is accepted.
+          </Text>
+        </View>
+
+        {error ? (
+          <View className="mb-4 rounded-3xl border border-rose-200 bg-rose-50 p-4">
+            <Text className="text-sm text-rose-700">{error}</Text>
           </View>
         ) : null}
-      </View>
 
-      {/* Error banner */}
-      {error ? (
-        <View className="mx-4 mt-3 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3.5 flex-row items-center gap-3">
-          <Ionicons name="alert-circle-outline" size={18} color="#e11d48" />
-          <Text className="flex-1 text-sm text-rose-600">{error}</Text>
-          <TouchableOpacity onPress={fetchApplications} className="bg-rose-600 px-3 py-1.5 rounded-full">
-            <Text className="text-xs font-bold text-white">Retry</Text>
-          </TouchableOpacity>
+        <View className="mb-6 flex-row gap-3">
+          <MetricCard label="Shortlisted" value={shortlistedCount} tone="green" />
+          <MetricCard label="Accepted" value={acceptedCount} tone="blue" />
+          <MetricCard label="Pending" value={pendingCount} tone="amber" />
         </View>
-      ) : null}
 
-      {renderSignalDeck()}
-
-      {/* Empty state */}
-      {jobs.length === 0 && !error ? (
-        <View className="flex-1 items-center justify-center px-10">
-          <View
-            className="w-24 h-24 rounded-3xl bg-neutral-50 border border-neutral-100 items-center justify-center mb-6"
-            style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } }}
-          >
-            <Ionicons name="briefcase-outline" size={42} color="#d4d4d4" />
+        {jobs.length === 0 ? (
+          <View className="rounded-[28px] border border-slate-200 bg-white p-6">
+            <Text className="text-lg font-bold text-slate-900">No applications yet</Text>
+            <Text className="mt-2 text-sm leading-6 text-slate-500">
+              When freelancers apply to your jobs, they will appear here with their reviews, quotes, and simple coordination board.
+            </Text>
           </View>
-          <Text className="text-xl font-bold text-neutral-900 mb-2 text-center tracking-tight">
-            No applications yet
-          </Text>
-          <Text className="text-sm text-neutral-400 text-center leading-6">
-            When freelancers apply to your jobs, you'll see their hire signals and contact handoff here.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={jobs}
-          renderItem={renderJob}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={{ padding: 16, paddingTop: 12, paddingBottom: 48 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#a3a3a3" />
-          }
-        />
-      )}
+        ) : null}
+
+        {jobs.map((job) => {
+          const summary = job.applicationSummary || buildSummary(job.applications)
+
+          return (
+            <View key={job.id} className="mb-6 rounded-[30px] bg-white p-5" style={{ borderWidth: 1, borderColor: "#E2E8F0" }}>
+              <View className="mb-4 flex-row items-start justify-between">
+                <View className="flex-1 pr-4">
+                  <Text className="text-xl font-bold text-slate-950">{job.serviceType}</Text>
+                  <Text className="mt-1 text-sm text-slate-500">Budget R{Number(job.maxPrice || 0).toFixed(0)}</Text>
+                </View>
+                <View className="rounded-2xl bg-slate-950 px-4 py-3">
+                  <Text className="text-xs font-semibold uppercase tracking-[1px] text-slate-300">Applications</Text>
+                  <Text className="mt-1 text-2xl font-bold text-white">{summary.total}</Text>
+                </View>
+              </View>
+
+              <View className="mb-4 flex-row gap-2">
+                <View className="rounded-full bg-amber-50 px-3 py-2">
+                  <Text className="text-xs font-bold text-amber-700">Pending {summary.pending}</Text>
+                </View>
+                <View className="rounded-full bg-emerald-50 px-3 py-2">
+                  <Text className="text-xs font-bold text-emerald-700">Accepted {summary.accepted}</Text>
+                </View>
+                <View className="rounded-full bg-slate-100 px-3 py-2">
+                  <Text className="text-xs font-bold text-slate-700">Rejected {summary.rejected}</Text>
+                </View>
+              </View>
+
+              {job.applications
+                .slice()
+                .sort((left, right) => {
+                  const leftPinned = left.clientDecision?.shortlisted ? 1 : 0
+                  const rightPinned = right.clientDecision?.shortlisted ? 1 : 0
+                  return rightPinned - leftPinned
+                })
+                .map((application) => {
+                  const reviewDraft = reviewDrafts[application.id] || {
+                    rating: 5,
+                    comment: "",
+                  }
+                  const noteDraft =
+                    noteDrafts[application.id] ?? application.clientDecision?.privateNote ?? ""
+                  const contactDraft = contactDrafts[application.id] || {
+                    phoneNumber: application.contactExchange?.phoneNumber || "",
+                    contactName:
+                      application.contactExchange?.contactName ||
+                      user?.fullName ||
+                      user?.firstName ||
+                      "",
+                    contactInstructions: application.contactExchange?.contactInstructions || "",
+                  }
+                  const isPending = application.status === "pending"
+                  const isAccepted = application.status === "accepted"
+
+                  return (
+                    <View
+                      key={application.id}
+                      className="mb-4 rounded-[28px] border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <View className="mb-3 flex-row items-start justify-between gap-3">
+                        <View className="flex-1">
+                          <Text className="text-lg font-bold text-slate-950">
+                            {application.freelancerName}
+                          </Text>
+                          <Text className="mt-1 text-sm text-slate-500">
+                            {application.freelancerEmail || "No email provided"} · Applied{" "}
+                            {formatRelativeDate(application.createdAt)}
+                          </Text>
+                        </View>
+                        <StatusPill status={application.status} />
+                      </View>
+
+                      <View className="mb-3 flex-row flex-wrap gap-2">
+                        <View className="rounded-full bg-white px-3 py-2">
+                          <Text className="text-xs font-bold text-slate-700">
+                            {Number(application.freelancerReviewSummary?.averageRating || 0).toFixed(1)}★ ·{" "}
+                            {application.freelancerReviewSummary?.reviewCount || 0} reviews
+                          </Text>
+                        </View>
+                        {application.clientDecision?.shortlisted ? (
+                          <View className="rounded-full bg-emerald-100 px-3 py-2">
+                            <Text className="text-xs font-bold text-emerald-700">Shortlisted</Text>
+                          </View>
+                        ) : null}
+                        {application.applicationSpotlight?.score ? (
+                          <View className="rounded-full bg-blue-100 px-3 py-2">
+                            <Text className="text-xs font-bold text-blue-700">
+                              Signal {application.applicationSpotlight.score}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {application.applicationSpotlight?.summary ? (
+                        <View className="mb-3 rounded-2xl bg-white p-4">
+                          <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
+                            Why this stands out
+                          </Text>
+                          <Text className="mt-2 text-sm leading-6 text-slate-600">
+                            {application.applicationSpotlight.summary}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {application.quotation ? (
+                        <View className="mb-3 rounded-2xl bg-emerald-50 p-4">
+                          <Text className="text-xs font-bold uppercase tracking-[1px] text-emerald-700">
+                            Quotation
+                          </Text>
+                          <Text className="mt-2 text-base font-bold text-emerald-900">
+                            {application.quotation}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {application.conditions ? (
+                        <View className="mb-3 rounded-2xl bg-white p-4">
+                          <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
+                            Conditions
+                          </Text>
+                          <Text className="mt-2 text-sm leading-6 text-slate-600">
+                            {application.conditions}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <View className="mb-3 rounded-2xl bg-white p-4">
+                        <View className="mb-3 flex-row items-center justify-between">
+                          <Text className="text-sm font-bold text-slate-900">Shortlist and notes</Text>
+                          <TouchableOpacity
+                            onPress={() =>
+                              updateClientMeta(application, {
+                                shortlisted: !application.clientDecision?.shortlisted,
+                                privateNote: noteDraft,
+                              })
+                            }
+                            className={`rounded-full px-3 py-2 ${
+                              application.clientDecision?.shortlisted ? "bg-emerald-100" : "bg-slate-100"
+                            }`}
+                            disabled={savingMetaId === application.id}
+                          >
+                            <Text
+                              className={`text-xs font-bold ${
+                                application.clientDecision?.shortlisted ? "text-emerald-700" : "text-slate-700"
+                              }`}
+                            >
+                              {application.clientDecision?.shortlisted ? "Remove shortlist" : "Shortlist"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <TextInput
+                          value={noteDraft}
+                          onChangeText={(value) =>
+                            setNoteDrafts((current) => ({
+                              ...current,
+                              [application.id]: value,
+                            }))
+                          }
+                          placeholder="Private note for this applicant"
+                          placeholderTextColor="#94A3B8"
+                          multiline
+                          className="rounded-2xl border border-slate-200 px-4 py-3 text-slate-900"
+                          style={{ minHeight: 86, textAlignVertical: "top" }}
+                        />
+
+                        <TouchableOpacity
+                          onPress={() =>
+                            updateClientMeta(application, {
+                              shortlisted: application.clientDecision?.shortlisted,
+                              privateNote: noteDraft,
+                            })
+                          }
+                          className="mt-3 self-start rounded-full bg-slate-900 px-4 py-2.5"
+                          disabled={savingMetaId === application.id}
+                        >
+                          <Text className="text-xs font-bold text-white">
+                            {savingMetaId === application.id ? "Saving..." : "Save note"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {application.contactExchange?.readyForDirectContact ? (
+                        <View className="mb-3 rounded-2xl bg-emerald-50 p-4">
+                          <Text className="text-sm font-bold text-emerald-800">
+                            Direct contact unlocked
+                          </Text>
+                          <Text className="mt-2 text-sm text-emerald-700">
+                            {application.contactExchange.contactName || "Client"} ·{" "}
+                            {application.contactExchange.phoneNumber || application.contactExchange.maskedPhoneNumber}
+                          </Text>
+                          {application.contactExchange.contactInstructions ? (
+                            <Text className="mt-2 text-sm leading-6 text-emerald-700">
+                              {application.contactExchange.contactInstructions}
+                            </Text>
+                          ) : null}
+                          <View className="mt-3 flex-row gap-2">
+                            <TouchableOpacity
+                              onPress={() => setExpandedContactId(application.id)}
+                              className="rounded-full bg-white px-4 py-2.5"
+                            >
+                              <Text className="text-xs font-bold text-emerald-700">Update contact</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => openDialer(application.contactExchange?.phoneNumber)}
+                              className="rounded-full bg-emerald-700 px-4 py-2.5"
+                            >
+                              <Text className="text-xs font-bold text-white">Call number</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {expandedContactId === application.id ? (
+                        <View className="mb-3 rounded-2xl bg-amber-50 p-4">
+                          <Text className="text-sm font-bold text-amber-800">
+                            Share contact details
+                          </Text>
+                          <TextInput
+                            value={contactDraft.phoneNumber}
+                            onChangeText={(value) =>
+                              setContactDrafts((current) => ({
+                                ...current,
+                                [application.id]: {
+                                  ...contactDraft,
+                                  phoneNumber: value,
+                                },
+                              }))
+                            }
+                            placeholder="Phone number"
+                            keyboardType="phone-pad"
+                            placeholderTextColor="#B45309"
+                            className="mt-3 rounded-2xl bg-white px-4 py-3 text-slate-900"
+                          />
+                          <TextInput
+                            value={contactDraft.contactName}
+                            onChangeText={(value) =>
+                              setContactDrafts((current) => ({
+                                ...current,
+                                [application.id]: {
+                                  ...contactDraft,
+                                  contactName: value,
+                                },
+                              }))
+                            }
+                            placeholder="Contact name"
+                            placeholderTextColor="#B45309"
+                            className="mt-3 rounded-2xl bg-white px-4 py-3 text-slate-900"
+                          />
+                          <TextInput
+                            value={contactDraft.contactInstructions}
+                            onChangeText={(value) =>
+                              setContactDrafts((current) => ({
+                                ...current,
+                                [application.id]: {
+                                  ...contactDraft,
+                                  contactInstructions: value,
+                                },
+                              }))
+                            }
+                            placeholder="Best time to call or extra instructions"
+                            placeholderTextColor="#B45309"
+                            multiline
+                            className="mt-3 rounded-2xl bg-white px-4 py-3 text-slate-900"
+                            style={{ minHeight: 80, textAlignVertical: "top" }}
+                          />
+                          <TouchableOpacity
+                            onPress={() => shareContactDetails(application)}
+                            className="mt-3 rounded-full bg-amber-600 px-4 py-3"
+                            disabled={sharingContactId === application.id}
+                          >
+                            <Text className="text-center text-sm font-bold text-white">
+                              {sharingContactId === application.id ? "Sharing..." : "Share contact"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
+
+                      {isAccepted ? (
+                        <View className="mb-3 rounded-2xl bg-white p-4">
+                          <Text className="text-sm font-bold text-slate-900">
+                            Leave a review for this freelancer
+                          </Text>
+                          <Text className="mt-1 text-sm leading-6 text-slate-500">
+                            Reviews stay editable, so you can update them after follow-up work too.
+                          </Text>
+                          <View className="mt-3">
+                            <StarPicker
+                              rating={reviewDraft.rating}
+                              onChange={(value) =>
+                                setReviewDrafts((current) => ({
+                                  ...current,
+                                  [application.id]: {
+                                    ...reviewDraft,
+                                    rating: value,
+                                  },
+                                }))
+                              }
+                            />
+                          </View>
+                          <TextInput
+                            value={reviewDraft.comment}
+                            onChangeText={(value) =>
+                              setReviewDrafts((current) => ({
+                                ...current,
+                                [application.id]: {
+                                  ...reviewDraft,
+                                  comment: value,
+                                },
+                              }))
+                            }
+                            placeholder="How did the job go?"
+                            placeholderTextColor="#94A3B8"
+                            multiline
+                            className="mt-3 rounded-2xl border border-slate-200 px-4 py-3 text-slate-900"
+                            style={{ minHeight: 86, textAlignVertical: "top" }}
+                          />
+                          <TouchableOpacity
+                            onPress={() => submitReview(application)}
+                            className="mt-3 self-start rounded-full bg-blue-600 px-4 py-2.5"
+                            disabled={submittingReviewId === application.id}
+                          >
+                            <Text className="text-xs font-bold text-white">
+                              {submittingReviewId === application.id ? "Saving..." : "Save review"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
+
+                      <View className="flex-row flex-wrap gap-2">
+                        {application.conversationId ? (
+                          <TouchableOpacity
+                            onPress={() => openCoordinationBoard(application, job)}
+                            className="rounded-full bg-slate-900 px-4 py-3"
+                          >
+                            <Text className="text-xs font-bold text-white">Open coordination board</Text>
+                          </TouchableOpacity>
+                        ) : null}
+
+                        {isPending ? (
+                          <>
+                            <TouchableOpacity
+                              onPress={() => updateApplicationStatus(application, "accepted")}
+                              className="rounded-full bg-emerald-600 px-4 py-3"
+                              disabled={updatingStatus === application.id}
+                            >
+                              <Text className="text-xs font-bold text-white">
+                                {updatingStatus === application.id ? "Updating..." : "Accept"}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => updateApplicationStatus(application, "rejected")}
+                              className="rounded-full bg-rose-100 px-4 py-3"
+                              disabled={updatingStatus === application.id}
+                            >
+                              <Text className="text-xs font-bold text-rose-700">Reject</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : null}
+
+                        {isAccepted && !application.contactExchange?.readyForDirectContact ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              ensureContactDraft(application)
+                              setExpandedContactId(application.id)
+                            }}
+                            className="rounded-full bg-amber-100 px-4 py-3"
+                          >
+                            <Text className="text-xs font-bold text-amber-700">Add phone number</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    </View>
+                  )
+                })}
+            </View>
+          )
+        })}
+      </ScrollView>
     </SafeAreaView>
   )
 }

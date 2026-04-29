@@ -19,7 +19,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "server",
@@ -27,7 +33,7 @@
       "bundler": "metro"
     },
     "plugins": [
-        [
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Allow QuickHands to access your location to show nearby services."
@@ -52,18 +58,18 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "d21ae9f4-5637-4946-bf71-7e50d0bc5c41"
-      }
-    },
     "owner": "bigcat87",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/d21ae9f4-5637-4946-bf71-7e50d0bc5c41"
+      "url": "https://u.expo.dev/c512aa05-9d47-4ad0-aafe-17cfae9f48c0"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c512aa05-9d47-4ad0-aafe-17cfae9f48c0"
+      }
     }
   }
 }

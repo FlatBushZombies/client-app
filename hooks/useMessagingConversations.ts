@@ -79,5 +79,17 @@ export function useMessagingConversations({
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      refresh().catch(() => undefined);
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [enabled, refresh]);
+
   return { conversations, loading, error, refresh };
 }

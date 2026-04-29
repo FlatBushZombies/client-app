@@ -11,6 +11,13 @@ export type ServerMessage = {
   clientMessageId?: string;
 };
 
+type SendMessageInput = {
+  tag: string;
+  note?: string;
+  label?: string;
+  clientMessageId?: string;
+};
+
 type Options = {
   serverUrl: string;
   apiBaseUrl: string;
@@ -156,9 +163,10 @@ export function useMessagingSocket({
   }, [apiBaseUrl, appendMessage, conversationId, enabled, realtimeEnabled, serverUrl]);
 
   const sendMessage = useCallback(
-    async (text: string, clientMessageId?: string) => {
-      const trimmedText = text.trim();
-      if (!trimmedText) {
+    async ({ tag, note, label, clientMessageId }: SendMessageInput) => {
+      const trimmedTag = tag.trim();
+      const trimmedNote = note?.trim() || "";
+      if (!trimmedTag) {
         return;
       }
 
@@ -170,7 +178,9 @@ export function useMessagingSocket({
 
       const baseApiUrl = apiBaseUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
       const payload = {
-        text: trimmedText,
+        tag: trimmedTag,
+        ...(trimmedNote ? { note: trimmedNote } : {}),
+        ...(label?.trim() ? { label: label.trim() } : {}),
         ...(clientMessageId ? { clientMessageId } : {}),
       };
 

@@ -1,29 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  View,
-  Text,
+  ActivityIndicator,
   FlatList,
   Pressable,
-  ActivityIndicator,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useAuth } from "@clerk/clerk-expo";
 import { router, useLocalSearchParams } from "expo-router";
 import { ConversationChatScreen } from "@/components/messaging/ConversationChatScreen";
 import { useMessagingConversations } from "@/hooks/useMessagingConversations";
-
-const DEFAULT_API_URL = "https://quickhands-api.vercel.app";
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL)
-  .replace(/\/$/, "")
-  .replace(/\/api\/?$/, "");
-
-type SearchUser = {
-  clerkId: string;
-  displayName: string;
-  email: string;
-};
+import { API_BASE_URL } from "@/lib/fetch";
 
 type ConversationRow = {
   conversationId: string;
@@ -45,115 +35,35 @@ export default function ChatScreen() {
     jobTitle?: string;
   }>();
 
+  const [query, setQuery] = useState("");
+
   const conversationId = params.conversationId;
   const otherDisplayName = params.otherDisplayName;
   const jobTitle = params.jobTitle;
 
-  const [q, setQ] = useState("");
-  const [users, setUsers] = useState<SearchUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
   const {
     conversations,
-    loading: loadingConversations,
-    error: conversationsError,
+    loading,
+    error,
+    refresh,
   } = useMessagingConversations({
     apiUrl: API_BASE_URL,
     getToken,
     enabled: isLoaded && !!isSignedIn && !!userId,
   });
 
-  const searchingUsers = q.trim().length > 0;
-
-  const loadUsers = useCallback(async () => {
-    if (!q.trim()) {
-      setUsers([]);
-      setLoadingUsers(false);
-      return;
+  const filteredConversations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return conversations;
     }
 
-    if (!isLoaded || !isSignedIn || !userId) {
-      setLoadingUsers(false);
-      setErr("Sign in to use messaging");
-      return;
-    }
-
-    setLoadingUsers(true);
-    setErr(null);
-
-    try {
-      const token = await getToken();
-      if (!token) {
-        setErr("Not signed in");
-        return;
-      }
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/messaging/users?q=${encodeURIComponent(q.trim())}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to load users");
-      }
-
-      setUsers(data.users || []);
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : "Failed to load users");
-      setUsers([]);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [getToken, isLoaded, isSignedIn, q, userId]);
-
-  useEffect(() => {
-    if (conversationId) {
-      return;
-    }
-
-    if (searchingUsers) {
-      loadUsers();
-      return;
-    }
-
-    setUsers((current) => (current.length === 0 ? current : []));
-  }, [conversationId, loadUsers, searchingUsers]);
-
-  const startChat = async (otherClerkId: string, displayName: string) => {
-    if (!isLoaded || !isSignedIn || !userId) {
-      setErr("Sign in to use messaging");
-      return;
-    }
-
-    const token = await getToken();
-    if (!token) return;
-
-    const response = await fetch(
-      `${API_BASE_URL}/api/messaging/conversation-with/${encodeURIComponent(otherClerkId)}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      setErr(data.message || "Could not open chat");
-      return;
-    }
-
-    router.push({
-      pathname: "/(root)/chat",
-      params: {
-        conversationId: data.conversationId,
-        otherClerkId,
-        otherDisplayName: data.otherUser?.displayName ?? displayName,
-      },
+    return conversations.filter((conversation) => {
+      const name = conversation.otherUser?.displayName?.toLowerCase() || "";
+      const title = conversation.jobTitle?.toLowerCase() || "";
+      return name.includes(normalizedQuery) || title.includes(normalizedQuery);
     });
-  };
+  }, [conversations, query]);
 
   const openConversation = (conversation: ConversationRow) => {
     router.push({
@@ -167,20 +77,12 @@ export default function ChatScreen() {
     });
   };
 
-  if (!API_BASE_URL) {
-    return (
-      <View style={styles.centered}>
-        <Text>Set EXPO_PUBLIC_API_URL</Text>
-      </View>
-    );
-  }
-
   if (conversationId) {
     if (!isLoaded || !isSignedIn || !userId) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator />
-          <Text style={styles.empty}>Loading your account...</Text>
+          <Text style={styles.helper}>Loading your account...</Text>
         </View>
       );
     }
@@ -194,7 +96,10 @@ export default function ChatScreen() {
           >
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Messages</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Coordination Board</Text>
+            <Text style={styles.helper}>Simple status updates only</Text>
+          </View>
         </View>
         <ConversationChatScreen
           clerkUserId={userId}
@@ -206,63 +111,53 @@ export default function ChatScreen() {
     );
   }
 
-  const loading = searchingUsers ? loadingUsers : loadingConversations;
-  const errorMessage = err || (!searchingUsers ? conversationsError : null);
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Messages</Text>
-      {!isLoaded || !isSignedIn ? (
-        <Text style={styles.empty}>Sign in to load messaging.</Text>
-      ) : null}
+      <Text style={styles.title}>Coordination Boards</Text>
+      <Text style={styles.helper}>
+        Each board shows the latest status and the next action for a job.
+      </Text>
+
       <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Filter by freelancer or job"
+        placeholderTextColor="#94A3B8"
         style={styles.search}
-        placeholder="Search users to start a chat"
-        value={q}
-        onChangeText={setQ}
-        onSubmitEditing={loadUsers}
-        editable={!!isLoaded && !!isSignedIn}
       />
-      {errorMessage ? <Text style={styles.err}>{errorMessage}</Text> : null}
+
+      {!isLoaded || !isSignedIn ? (
+        <Text style={styles.helper}>Sign in to view your boards.</Text>
+      ) : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator style={{ marginTop: 24 }} />
       ) : (
         <FlatList
-          data={searchingUsers ? users : conversations}
-          keyExtractor={(item: SearchUser | ConversationRow) =>
-            "clerkId" in item ? item.clerkId : item.conversationId
-          }
-          renderItem={({ item }: { item: SearchUser | ConversationRow }) =>
-            "clerkId" in item ? (
-              <Pressable
-                style={styles.row}
-                onPress={() => startChat(item.clerkId, item.displayName)}
-              >
-                <Text style={styles.name}>{item.displayName}</Text>
-                <Text style={styles.sub}>{item.email}</Text>
-              </Pressable>
-            ) : (
-              <Pressable style={styles.row} onPress={() => openConversation(item)}>
-                <Text style={styles.name}>
-                  {item.otherUser?.displayName ?? "Conversation"}
-                </Text>
-                <Text style={styles.sub}>
-                  {item.jobTitle || item.lastMessageText || "Open conversation"}
-                </Text>
-                {item.lastMessageAt ? (
-                  <Text style={styles.time}>
-                    {new Date(item.lastMessageAt).toLocaleDateString()}
-                  </Text>
-                ) : null}
-              </Pressable>
-            )
-          }
+          data={filteredConversations}
+          keyExtractor={(item) => item.conversationId}
+          renderItem={({ item }) => (
+            <Pressable style={styles.row} onPress={() => openConversation(item)}>
+              <Text style={styles.name}>{item.otherUser?.displayName || "Coordination board"}</Text>
+              <Text style={styles.sub}>{item.jobTitle || "Open board"}</Text>
+              <Text style={styles.time}>
+                {item.lastMessageAt
+                  ? new Date(item.lastMessageAt).toLocaleDateString()
+                  : "No status yet"}
+              </Text>
+            </Pressable>
+          )}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              {searchingUsers
-                ? "No users found"
-                : "No conversations yet. Message applicants from your jobs to begin."}
-            </Text>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No boards yet</Text>
+              <Text style={styles.emptyText}>
+                Accept or apply to a job and the coordination board will appear here.
+              </Text>
+              <TouchableOpacity onPress={() => refresh()} style={styles.refreshButton}>
+                <Text style={styles.refreshLabel}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
       )}
@@ -271,28 +166,111 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 48 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
-  backButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#111827",
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 48,
+    backgroundColor: "#F8FAFC",
   },
-  backButtonText: { color: "#fff", fontWeight: "600" },
-  search: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  helper: {
+    color: "#64748B",
+    marginTop: 4,
     marginBottom: 12,
   },
-  row: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  name: { fontSize: 16, fontWeight: "600" },
-  sub: { fontSize: 13, color: "#666" },
-  time: { fontSize: 12, color: "#9CA3AF", marginTop: 4 },
-  err: { color: "crimson", marginBottom: 8 },
-  empty: { textAlign: "center", marginTop: 24, color: "#888" },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  backButton: {
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  search: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    color: "#0F172A",
+  },
+  row: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 16,
+    marginBottom: 10,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 4,
+  },
+  sub: {
+    fontSize: 13,
+    color: "#475569",
+  },
+  time: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#94A3B8",
+  },
+  error: {
+    color: "#DC2626",
+    marginBottom: 12,
+  },
+  emptyCard: {
+    marginTop: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+    color: "#64748B",
+    marginBottom: 12,
+  },
+  refreshButton: {
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  refreshLabel: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
 });
