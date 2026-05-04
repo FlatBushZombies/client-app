@@ -5,22 +5,34 @@ import { Text, View, TouchableOpacity, ActivityIndicator, Image, Platform } from
 import { router } from "expo-router"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
+import { ensureBackendUser } from "@/lib/userSync"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
-      // Check if user has completed onboarding
+    const syncAndRoute = async () => {
+      if (!isLoaded || !isSignedIn || !user) {
+        return
+      }
+
+      try {
+        await ensureBackendUser(user)
+      } catch (error) {
+        console.error("Failed to sync client user:", error)
+      }
+
       const completedOnboarding = user.unsafeMetadata?.completedOnboarding
-      
+
       if (completedOnboarding) {
         router.replace("/(root)/home")
       } else {
         router.replace("/(auth)/onboarding")
       }
     }
+
+    syncAndRoute().catch(() => undefined)
   }, [isLoaded, isSignedIn, user])
 
   const handleGetStarted = () => {

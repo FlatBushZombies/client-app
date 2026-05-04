@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { waitForClerkToken } from "@/lib/session";
 
 export type ConversationSummary = {
   conversationId: string;
@@ -47,10 +48,9 @@ export function useMessagingConversations({
     setError(null);
 
     try {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       if (!token) {
-        setError("Not signed in");
-        setConversations([]);
+        setError(null);
         return;
       }
 
@@ -61,6 +61,11 @@ export function useMessagingConversations({
         },
       });
       const data = await response.json();
+
+      if (response.status === 401) {
+        setError(null);
+        return;
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to load conversations");
@@ -76,7 +81,7 @@ export function useMessagingConversations({
   }, [apiUrl, enabled]);
 
   useEffect(() => {
-    refresh();
+    refresh().catch(() => undefined);
   }, [refresh]);
 
   useEffect(() => {

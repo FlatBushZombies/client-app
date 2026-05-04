@@ -12,11 +12,13 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Keyboard,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
 import { getApiUrl } from "@/lib/fetch"
 import * as Location from "expo-location"
+import * as SecureStore from "expo-secure-store"
 
 interface FormData {
   serviceType: string
@@ -51,6 +53,57 @@ interface TaskLocationState {
 }
 
 type DateFieldKey = "startDate" | "endDate"
+const TEMPLATE_STORAGE_PREFIX = "client_job_templates"
+
+function templateStorageKey(clerkId: string) {
+  return `${TEMPLATE_STORAGE_PREFIX}:${clerkId}`
+}
+
+function hasTemplateContent(formData: FormData) {
+  return Boolean(
+    formData.serviceType.trim() ||
+      formData.selectedServices.length ||
+      formData.startDate ||
+      formData.endDate ||
+      formData.maxPrice.trim() ||
+      formData.specialistChoice.trim() ||
+      formData.additionalInfo.trim() ||
+      formData.documents.trim()
+  )
+}
+
+function normalizeTemplate(template: Partial<JobTemplate>) {
+  return {
+    id: template.id || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    name: template.name?.trim() || template.serviceType?.trim() || "Saved template",
+    serviceType: template.serviceType?.trim() || "",
+    selectedServices: Array.isArray(template.selectedServices) ? template.selectedServices.filter(Boolean) : [],
+    startDate: template.startDate || "",
+    endDate: template.endDate || "",
+    maxPrice: Number(template.maxPrice) || 0,
+    specialistChoice: template.specialistChoice || "",
+    additionalInfo: template.additionalInfo || "",
+    documents: Array.isArray(template.documents) ? template.documents.filter(Boolean) : [],
+  } satisfies JobTemplate
+}
+
+async function readStoredTemplates(clerkId: string) {
+  const rawValue = await SecureStore.getItemAsync(templateStorageKey(clerkId))
+  if (!rawValue) {
+    return []
+  }
+
+  try {
+    const parsedValue = JSON.parse(rawValue)
+    return Array.isArray(parsedValue) ? parsedValue.map(normalizeTemplate) : []
+  } catch {
+    return []
+  }
+}
+
+async function writeStoredTemplates(clerkId: string, templates: JobTemplate[]) {
+  await SecureStore.setItemAsync(templateStorageKey(clerkId), JSON.stringify(templates))
+}
 
 function startOfDay(date: Date) {
   const nextDate = new Date(date)
@@ -248,6 +301,7 @@ export default function ServiceRequestScreen() {
   }
 
   const openDatePicker = (field: DateFieldKey) => {
+    Keyboard.dismiss()
     const existingDate = parseStoredDate(formData[field])
     const comparisonDate =
       existingDate ||
@@ -313,7 +367,13 @@ export default function ServiceRequestScreen() {
     const updated = formData.selectedServices.includes(service)
       ? formData.selectedServices.filter((s) => s !== service)
       : [...formData.selectedServices, service]
-    updateFormData({ selectedServices: updated })
+    const normalizedServiceType = formData.serviceType.trim()
+    updateFormData({
+      selectedServices: updated,
+      serviceType:
+        normalizedServiceType ||
+        (updated.length > 0 ? updated[0] : ""),
+    })
   }
 
   const syncUserLocation = useCallback(
@@ -405,24 +465,22 @@ export default function ServiceRequestScreen() {
   }, [loadTaskLocation, modalVisible])
 
   const fetchTemplates = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setTemplates([])
+      return
+    }
 
     try {
       setTemplatesLoading(true)
-      const token = await getToken()
-      const response = await fetch(getApiUrl("/api/user/me/templates"), {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to fetch templates")
-      setTemplates(Array.isArray(data.templates) ? data.templates : [])
+      const storedTemplates = await readStoredTemplates(user.id)
+      setTemplates(storedTemplates)
     } catch (error) {
-      console.warn("[Templates] Failed to fetch templates", error)
+      console.warn("[Templates] Failed to load stored templates", error)
       setTemplates([])
     } finally {
       setTemplatesLoading(false)
     }
-  }, [getToken, user?.id])
+  }, [user?.id])
 
   useEffect(() => {
     if (modalVisible) {
@@ -431,72 +489,76 @@ export default function ServiceRequestScreen() {
   }, [fetchTemplates, modalVisible])
 
   const saveCurrentTemplate = useCallback(async () => {
+    Keyboard.dismiss()
+
+    const normalizedServiceType =
+      formData.serviceType.trim() || formData.selectedServices[0] || ""
+
     if (!user?.id) {
       Alert.alert("Sign in required", "Please sign in before saving templates.")
       return
     }
 
-    if (!formData.serviceType.trim()) {
-      Alert.alert("Missing service", "Add at least a service type before saving a template.")
+    if (!hasTemplateContent(formData)) {
+      Alert.alert("Nothing to save", "Fill in at least one part of the form before saving a template.")
       return
     }
 
     try {
       setSavingTemplate(true)
-      const token = await getToken()
-      const response = await fetch(getApiUrl("/api/user/me/templates"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          name: templateName.trim() || formData.serviceType,
-          serviceType: formData.serviceType,
-          selectedServices: formData.selectedServices,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          maxPrice: Number(formData.maxPrice) || 0,
-          specialistChoice: formData.specialistChoice,
-          additionalInfo: formData.additionalInfo,
-          documents: formData.documents
-            ? formData.documents.split(",").map((entry) => entry.trim()).filter(Boolean)
-            : [],
-        }),
+      const currentTemplates = await readStoredTemplates(user.id)
+      const fallbackTemplateName = `Template ${currentTemplates.length + 1}`
+      const nextTemplate = normalizeTemplate({
+        name: templateName.trim() || normalizedServiceType || fallbackTemplateName,
+        serviceType: normalizedServiceType,
+        selectedServices: formData.selectedServices,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        maxPrice: Number(formData.maxPrice) || 0,
+        specialistChoice: formData.specialistChoice,
+        additionalInfo: formData.additionalInfo,
+        documents: formData.documents
+          ? formData.documents.split(",").map((entry) => entry.trim()).filter(Boolean)
+          : [],
       })
-      const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to save template")
+      const nextTemplates = [nextTemplate, ...currentTemplates.filter((template) => template.id !== nextTemplate.id)].slice(0, 20)
+      await writeStoredTemplates(user.id, nextTemplates)
+      setTemplates(nextTemplates)
       setTemplateName("")
-      await fetchTemplates()
       Alert.alert("Template saved", "You can reuse this job setup any time.")
     } catch (error) {
       Alert.alert("Template error", error instanceof Error ? error.message : "Please try again.")
     } finally {
       setSavingTemplate(false)
     }
-  }, [fetchTemplates, formData, getToken, templateName, user?.id])
+  }, [formData, templateName, user?.id])
 
   const deleteTemplate = useCallback(async (templateId: string) => {
     try {
-      const token = await getToken()
-      const response = await fetch(getApiUrl(`/api/user/me/templates/${templateId}`), {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.message || "Failed to delete template")
-      await fetchTemplates()
+      if (!user?.id) {
+        return
+      }
+
+      const currentTemplates = await readStoredTemplates(user.id)
+      const nextTemplates = currentTemplates.filter((template) => template.id !== templateId)
+      await writeStoredTemplates(user.id, nextTemplates)
+      setTemplates(nextTemplates)
     } catch (error) {
       Alert.alert("Delete failed", error instanceof Error ? error.message : "Please try again.")
     }
-  }, [fetchTemplates, getToken])
+  }, [user?.id])
 
   const handleSubmit = useCallback(async () => {
+    Keyboard.dismiss()
+
+    const normalizedServiceType =
+      formData.serviceType.trim() || formData.selectedServices[0] || ""
+
     if (!isLoaded || !isSignedIn || !user) {
       Alert.alert("Authentication Required", "Please sign in first.")
       return
     }
-    if (!formData.serviceType || !formData.startDate || !formData.endDate || !formData.maxPrice) {
+    if (!normalizedServiceType || !formData.startDate || !formData.endDate || !formData.maxPrice) {
       Alert.alert("Missing Fields", "Please complete all required fields.")
       return
     }
@@ -525,7 +587,7 @@ export default function ServiceRequestScreen() {
       const token = await getToken()
       if (!token) throw new Error("Token missing")
       const payload = {
-        serviceType: formData.serviceType,
+        serviceType: normalizedServiceType,
         selectedServices: formData.selectedServices,
         startDate: formData.startDate,
         endDate: formData.endDate,
@@ -686,6 +748,8 @@ export default function ServiceRequestScreen() {
             className="flex-1"
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120, gap: 12 }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="on-drag"
           >
             <Card title="Saved Templates">
               <Field
@@ -944,119 +1008,117 @@ export default function ServiceRequestScreen() {
             </TouchableOpacity>
           </View>
 
-        </SafeAreaView>
-      </Modal>
-
-      <Modal
-        visible={activeDateField !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActiveDateField(null)}
-      >
-        <View className="flex-1 justify-end bg-black/35 px-4 pb-8">
-          <View className="rounded-[28px] border border-green-200 bg-white p-5">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-[11px] font-bold uppercase tracking-[0.6px] text-green-700 font-jakarta-bold">
-                  {activeDateField === "startDate" ? "Start date" : "End date"}
-                </Text>
-                <Text className="mt-1 text-lg font-bold text-green-950 font-jakarta-bold">
-                  {monthLabel(calendarMonth)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setActiveDateField(null)}
-                className="w-10 h-10 rounded-full bg-[#F0F7F4] items-center justify-center"
-              >
-                <Ionicons name="close" size={18} color="#0D3D27" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="mt-4 flex-row items-center justify-between">
-              <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(
-                    new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1)
-                  )
-                }
-                className="rounded-full bg-[#F0F7F4] px-4 py-2.5"
-              >
-                <Text className="text-xs font-bold text-green-700 font-jakarta-bold">Previous</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(
-                    new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1)
-                  )
-                }
-                className="rounded-full bg-green-700 px-4 py-2.5"
-              >
-                <Text className="text-xs font-bold text-white font-jakarta-bold">Next</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="mt-5 flex-row justify-between">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <Text
-                  key={day}
-                  className="w-[13%] text-center text-[11px] font-bold uppercase tracking-[0.6px] text-green-700 font-jakarta-bold"
-                >
-                  {day}
-                </Text>
-              ))}
-            </View>
-
-            <View className="mt-3 flex-row flex-wrap justify-between">
-              {buildCalendarDays(calendarMonth).map((cell) => {
-                if (!cell.date) {
-                  return <View key={cell.key} style={{ width: "13%", height: 46, marginBottom: 8 }} />
-                }
-
-                const normalizedDate = startOfDay(cell.date)
-                const today = startOfDay(new Date())
-                const selectedStartDate = parseStoredDate(formData.startDate)
-                const selectedEndDate = parseStoredDate(formData.endDate)
-                const isDisabled =
-                  normalizedDate < today ||
-                  (activeDateField === "endDate" &&
-                    selectedStartDate !== null &&
-                    normalizedDate < selectedStartDate)
-                const isSelected =
-                  (activeDateField === "startDate" &&
-                    selectedStartDate?.getTime() === normalizedDate.getTime()) ||
-                  (activeDateField === "endDate" &&
-                    selectedEndDate?.getTime() === normalizedDate.getTime())
-
-                return (
-                  <TouchableOpacity
-                    key={cell.key}
-                    onPress={() => handleDateSelection(normalizedDate)}
-                    disabled={isDisabled}
-                    activeOpacity={0.82}
-                    className={`items-center justify-center rounded-2xl mb-2 ${
-                      isSelected ? "bg-green-700" : "bg-[#F0F7F4]"
-                    }`}
-                    style={{ width: "13%", height: 46, opacity: isDisabled ? 0.35 : 1 }}
-                  >
-                    <Text
-                      className={`text-sm font-semibold font-jakarta-semibold ${
-                        isSelected ? "text-white" : "text-green-950"
-                      }`}
-                    >
-                      {normalizedDate.getDate()}
+          {activeDateField !== null ? (
+            <View
+              className="absolute inset-0 justify-end bg-black/35 px-4 pb-8"
+              style={{ zIndex: 50, elevation: 50 }}
+            >
+              <View className="rounded-[28px] border border-green-200 bg-white p-5">
+                <View className="flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-[11px] font-bold uppercase tracking-[0.6px] text-green-700 font-jakarta-bold">
+                      {activeDateField === "startDate" ? "Start date" : "End date"}
                     </Text>
+                    <Text className="mt-1 text-lg font-bold text-green-950 font-jakarta-bold">
+                      {monthLabel(calendarMonth)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setActiveDateField(null)}
+                    className="w-10 h-10 rounded-full bg-[#F0F7F4] items-center justify-center"
+                  >
+                    <Ionicons name="close" size={18} color="#0D3D27" />
                   </TouchableOpacity>
-                )
-              })}
-            </View>
+                </View>
 
-            <View className="mt-3 rounded-[16px] bg-[#F0F7F4] px-4 py-3">
-              <Text className="text-xs leading-5 text-green-700 font-jakarta">
-                Start dates can be today or later. End dates must be the same as or after the selected start date.
-              </Text>
+                <View className="mt-4 flex-row items-center justify-between">
+                  <TouchableOpacity
+                    onPress={() =>
+                      setCalendarMonth(
+                        new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1)
+                      )
+                    }
+                    className="rounded-full bg-[#F0F7F4] px-4 py-2.5"
+                  >
+                    <Text className="text-xs font-bold text-green-700 font-jakarta-bold">Previous</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setCalendarMonth(
+                        new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1)
+                      )
+                    }
+                    className="rounded-full bg-green-700 px-4 py-2.5"
+                  >
+                    <Text className="text-xs font-bold text-white font-jakarta-bold">Next</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View className="mt-5 flex-row justify-between">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                    <Text
+                      key={day}
+                      className="w-[13%] text-center text-[11px] font-bold uppercase tracking-[0.6px] text-green-700 font-jakarta-bold"
+                    >
+                      {day}
+                    </Text>
+                  ))}
+                </View>
+
+                <View className="mt-3 flex-row flex-wrap justify-between">
+                  {buildCalendarDays(calendarMonth).map((cell) => {
+                    if (!cell.date) {
+                      return <View key={cell.key} style={{ width: "13%", height: 46, marginBottom: 8 }} />
+                    }
+
+                    const normalizedDate = startOfDay(cell.date)
+                    const today = startOfDay(new Date())
+                    const selectedStartDate = parseStoredDate(formData.startDate)
+                    const selectedEndDate = parseStoredDate(formData.endDate)
+                    const isDisabled =
+                      normalizedDate < today ||
+                      (activeDateField === "endDate" &&
+                        selectedStartDate !== null &&
+                        normalizedDate < selectedStartDate)
+                    const isSelected =
+                      (activeDateField === "startDate" &&
+                        selectedStartDate?.getTime() === normalizedDate.getTime()) ||
+                      (activeDateField === "endDate" &&
+                        selectedEndDate?.getTime() === normalizedDate.getTime())
+
+                    return (
+                      <TouchableOpacity
+                        key={cell.key}
+                        onPress={() => handleDateSelection(normalizedDate)}
+                        disabled={isDisabled}
+                        activeOpacity={0.82}
+                        className={`items-center justify-center rounded-2xl mb-2 ${
+                          isSelected ? "bg-green-700" : "bg-[#F0F7F4]"
+                        }`}
+                        style={{ width: "13%", height: 46, opacity: isDisabled ? 0.35 : 1 }}
+                      >
+                        <Text
+                          className={`text-sm font-semibold font-jakarta-semibold ${
+                            isSelected ? "text-white" : "text-green-950"
+                          }`}
+                        >
+                          {normalizedDate.getDate()}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+
+                <View className="mt-3 rounded-[16px] bg-[#F0F7F4] px-4 py-3">
+                  <Text className="text-xs leading-5 text-green-700 font-jakarta">
+                    Start dates can be today or later. End dates must be the same as or after the selected start date.
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
+          ) : null}
+
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   )

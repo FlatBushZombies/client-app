@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useAuth } from "@clerk/clerk-expo";
 import { getApiUrl } from "@/lib/fetch";
+import { waitForClerkToken } from "@/lib/session";
 
 const CLIENT_TAGS = [
   { kind: "ready-for-visit", label: "Ready for visit" },
@@ -39,6 +40,14 @@ type ParsedCard = {
   label: string;
   note: string | null;
 };
+
+function buildCardText(kind: string, label: string, note: string) {
+  return `QH_CARD::${JSON.stringify({
+    kind: String(kind || "update"),
+    label: String(label || "").trim(),
+    note: note.trim() || null,
+  })}`;
+}
 
 function parseCard(text: string): ParsedCard | null {
   const normalized = String(text || "").trim();
@@ -109,9 +118,9 @@ export function ConversationChatScreen({
     }
 
     try {
-      const token = await getToken();
+      const token = await waitForClerkToken(getToken);
       if (!token) {
-        setError("Sign in to view coordination updates.");
+        setError(null);
         return;
       }
 
@@ -124,6 +133,11 @@ export function ConversationChatScreen({
         }
       );
       const data = await response.json();
+
+      if (response.status === 401) {
+        setError(null);
+        return;
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to load updates");
@@ -167,9 +181,9 @@ export function ConversationChatScreen({
 
     try {
       setSending(true);
-      const token = await getToken();
+      const token = await waitForClerkToken(getToken);
       if (!token) {
-        throw new Error("Sign in to send updates");
+        throw new Error("Your session is still loading. Please try again.");
       }
 
       const response = await fetch(
@@ -181,6 +195,7 @@ export function ConversationChatScreen({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            text: buildCardText(activeTag.kind, activeTag.label, note),
             tag: activeTag.kind,
             label: activeTag.label,
             note,
@@ -188,6 +203,10 @@ export function ConversationChatScreen({
         }
       );
       const data = await response.json();
+
+      if (response.status === 401) {
+        throw new Error("Your session expired. Please reopen the board.");
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to send update");

@@ -20,7 +20,7 @@ const OAuth = () => {
       const result = await googleOAuth(startOAuthFlow)
 
       if (result.success) {
-        router.replace("/(root)/home")
+        router.replace(result.needsOnboarding ? "/(auth)/onboarding" : "/")
         return
       }
 
