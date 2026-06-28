@@ -55,7 +55,6 @@ const OAuth = () => {
       {/* Google Button */}
       <CustomButton
         title={loading ? "Signing you in…" : "Continue with Google"}
-        className="w-full py-4"
         disabled={loading}
         IconLeft={() => (
           <Image

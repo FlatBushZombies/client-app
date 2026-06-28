@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { io, Socket } from "socket.io-client";
 import { API_BASE_URL, getApiUrl } from "@/lib/fetch";
+import { waitForClerkToken } from "@/lib/session";
 
 type NotificationApplication = {
   id: number;
@@ -119,7 +120,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       const response = await fetch(getApiUrl(`/api/notifications/by-clerk/${user.id}`), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -191,7 +192,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     let socket: Socket | null = null;
 
     (async () => {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       if (!token || cancelled) {
         return;
       }
@@ -263,7 +264,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     );
 
     try {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       const response = await fetch(getApiUrl(`/api/notifications/${notificationId}/read`), {
         method: "PATCH",
         headers: {
@@ -290,7 +291,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
 
     try {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       const response = await fetch(getApiUrl(`/api/notifications/by-clerk/${clerkId}/read`), {
         method: "PATCH",
         headers: {

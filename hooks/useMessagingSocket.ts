@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { waitForClerkToken } from "@/lib/session";
 
 export type ServerMessage = {
   id: string;
@@ -76,7 +77,7 @@ export function useMessagingSocket({
     const baseApiUrl = apiBaseUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
 
     (async () => {
-      const token = await getTokenRef.current();
+      const token = await waitForClerkToken(getTokenRef.current);
       if (!token || cancelled) {
         setLastError("Not signed in");
         setLoadingHistory(false);
@@ -171,7 +172,8 @@ export function useMessagingSocket({
       }
 
       const token = await getTokenRef.current();
-      if (!token) {
+      const resolvedToken = token || (await waitForClerkToken(getTokenRef.current));
+      if (!resolvedToken) {
         setLastError("Not signed in");
         return;
       }
@@ -190,7 +192,7 @@ export function useMessagingSocket({
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${resolvedToken}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),

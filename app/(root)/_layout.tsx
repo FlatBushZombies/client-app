@@ -134,7 +134,7 @@ const TabIcon = ({
                 color: "#ffffff",
                 fontSize: 9,
                 lineHeight: 11,
-                fontFamily: "PlusJakartaSans-Bold",
+                fontFamily: "PlusJakartaSans_700Bold",
               }}
             >
               {badgeLabel}
@@ -150,7 +150,7 @@ const TabIcon = ({
           fontSize: 10,
           lineHeight: 13,
           letterSpacing: 0.24,
-          fontFamily: focused ? "PlusJakartaSans-Bold" : "PlusJakartaSans-Medium",
+          fontFamily: focused ? "PlusJakartaSans_700Bold" : "PlusJakartaSans_500Medium",
           color: focused ? COLOR.active : COLOR.inactive,
         }}
       >

@@ -8,15 +8,17 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Platform,
   Keyboard,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
 import { getApiUrl } from "@/lib/fetch"
+import { waitForClerkToken } from "@/lib/session"
+import { SCREEN_PADDING } from "@/constants/layout"
 import * as Location from "expo-location"
 import * as SecureStore from "expo-secure-store"
 
@@ -187,7 +189,7 @@ function DateField({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.82}
-        className="flex-row items-center rounded-xl border-[1.5px] border-green-200 bg-[#F0F7F4] px-3.5"
+        className="flex-row items-center rounded-2xl border-[1.5px] border-green-200 bg-[#F0F7F4] px-3.5"
         style={{ paddingVertical: Platform.OS === "ios" ? 13 : 11 }}
       >
         <Ionicons
@@ -222,7 +224,7 @@ function Field({
         {label}
       </Text>
       <View
-        className={`flex-row items-center rounded-xl px-3.5 border-[1.5px] ${
+        className={`flex-row items-center rounded-2xl px-3.5 border-[1.5px] ${
           focused ? "border-green-700 bg-[#F5FBF8]" : "border-green-200 bg-[#F0F7F4]"
         }`}
         style={{ paddingVertical: Platform.OS === "ios" ? 13 : 10 }}
@@ -251,7 +253,7 @@ function Field({
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View
-      className="bg-white rounded-[18px] p-5 border border-green-200 gap-3"
+      className="bg-white rounded-[20px] p-5 border border-green-200 gap-3"
       style={{ shadowColor: "#1A7F5A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
     >
       <View className="flex-row items-center gap-2.5">
@@ -379,7 +381,7 @@ export default function ServiceRequestScreen() {
   const syncUserLocation = useCallback(
     async (location: Omit<TaskLocationState, "loading">) => {
       try {
-        const token = await getToken()
+        const token = await waitForClerkToken(getToken)
         if (!token || !user?.id) {
           return
         }
@@ -584,7 +586,7 @@ export default function ServiceRequestScreen() {
 
     try {
       setLoading(true)
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       if (!token) throw new Error("Token missing")
       const payload = {
         serviceType: normalizedServiceType,
@@ -663,7 +665,7 @@ export default function ServiceRequestScreen() {
 
         {/* Q logo mark */}
         <View
-          className="w-[52px] h-[52px] rounded-[14px] bg-green-700 items-center justify-center mb-7"
+          className="w-[52px] h-[52px] rounded-2xl bg-green-700 items-center justify-center mb-7"
           style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 14, elevation: 8 }}
         >
           <Text className="text-[30px] font-black text-green-900 tracking-[-1px] leading-9 font-jakarta-bold">Q</Text>
@@ -685,7 +687,7 @@ export default function ServiceRequestScreen() {
         </Text>
 
         <TouchableOpacity
-          className="flex-row items-center self-start bg-white py-3.5 pl-[22px] pr-3.5 rounded-full gap-2.5 mb-9"
+          className="flex-row items-center self-start bg-white py-4 pl-[22px] pr-3.5 rounded-full gap-2.5 mb-9"
           onPress={() => setModalVisible(true)}
           activeOpacity={0.85}
           style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 18, elevation: 8 }}
@@ -746,7 +748,7 @@ export default function ServiceRequestScreen() {
 
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: SCREEN_PADDING.content, paddingTop: 16, paddingBottom: 120, gap: 12 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
@@ -787,7 +789,7 @@ export default function ServiceRequestScreen() {
                   {templates.map((template) => (
                     <View
                       key={template.id}
-                      className="rounded-[14px] border-[1.5px] border-green-200 bg-[#F0F7F4] p-3.5"
+                      className="rounded-2xl border-[1.5px] border-green-200 bg-[#F0F7F4] p-3.5"
                     >
                       <View className="flex-row items-center justify-between mb-1.5">
                         <Text className="text-sm font-bold text-green-950 font-jakarta-bold flex-1 mr-3">
@@ -849,7 +851,7 @@ export default function ServiceRequestScreen() {
 
             {/* TIMELINE */}
             <Card title="Timeline">
-              <View className="rounded-[14px] border-[1.5px] border-green-200 bg-[#F0F7F4] px-4 py-3">
+              <View className="rounded-2xl border-[1.5px] border-green-200 bg-[#F0F7F4] px-4 py-3">
                 <Text className="text-sm font-jakarta-semibold text-green-950">
                   Choose the dates from the calendar
                 </Text>
@@ -888,7 +890,7 @@ export default function ServiceRequestScreen() {
             </Card>
 
             <Card title="Task Area">
-              <View className="rounded-[14px] border-[1.5px] border-green-200 bg-[#F0F7F4] px-4 py-4">
+              <View className="rounded-2xl border-[1.5px] border-green-200 bg-[#F0F7F4] px-4 py-4">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1 pr-3">
                     <Text className="text-[11px] font-bold text-green-700 tracking-[0.6px] uppercase font-jakarta-bold">
@@ -930,7 +932,7 @@ export default function ServiceRequestScreen() {
                   <TouchableOpacity
                     key={choice.key}
                     onPress={() => updateFormData({ specialistChoice: choice.key })}
-                    className={`flex-row items-center gap-3.5 p-3.5 rounded-[14px] border-[1.5px] ${
+                    className={`flex-row items-center gap-3.5 p-3.5 rounded-2xl border-[1.5px] ${
                       active ? "border-green-700 bg-green-50" : "border-green-200 bg-[#F0F7F4]"
                     }`}
                     activeOpacity={0.8}
@@ -961,7 +963,7 @@ export default function ServiceRequestScreen() {
               <Text className="text-[11px] font-bold text-green-700 tracking-[0.6px] uppercase font-jakarta-bold">
                 Describe your task
               </Text>
-              <View className="bg-[#F0F7F4] rounded-xl border-[1.5px] border-green-200 px-3.5 py-3">
+              <View className="bg-[#F0F7F4] rounded-2xl border-[1.5px] border-green-200 px-3.5 py-3">
                 <TextInput
                   placeholder="Include relevant details about location, timing, or special requirements..."
                   placeholderTextColor="#93C9AE"
@@ -989,7 +991,7 @@ export default function ServiceRequestScreen() {
             style={{ paddingBottom: Platform.OS === "ios" ? 34 : 20 }}
           >
             <TouchableOpacity
-              className="bg-green-700 rounded-full py-[15px] flex-row items-center justify-center"
+              className="bg-green-700 rounded-full py-4 flex-row items-center justify-center"
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.88}

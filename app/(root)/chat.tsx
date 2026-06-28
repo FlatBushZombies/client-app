@@ -9,11 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/clerk-expo";
 import { router, useLocalSearchParams } from "expo-router";
 import { ConversationChatScreen } from "@/components/messaging/ConversationChatScreen";
 import { useMessagingConversations } from "@/hooks/useMessagingConversations";
 import { API_BASE_URL } from "@/lib/fetch";
+import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout";
 
 type ConversationRow = {
   conversationId: string;
@@ -80,15 +83,15 @@ export default function ChatScreen() {
   if (conversationId) {
     if (!isLoaded || !isSignedIn || !userId) {
       return (
-        <View style={styles.centered}>
-          <ActivityIndicator />
-          <Text style={styles.helper}>Loading your account...</Text>
-        </View>
+        <SafeAreaView style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <Text style={[styles.helper, { marginTop: SPACING.sm }]}>Loading your account...</Text>
+        </SafeAreaView>
       );
     }
 
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => router.replace("/(root)/chat")}
@@ -107,12 +110,12 @@ export default function ChatScreen() {
           otherDisplayName={otherDisplayName}
           jobTitle={jobTitle}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Coordination Boards</Text>
       <Text style={styles.helper}>
         Each board shows the latest status and the next action for a job.
@@ -132,7 +135,7 @@ export default function ChatScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} />
+        <ActivityIndicator size="small" style={{ marginTop: SPACING.xl }} />
       ) : (
         <FlatList
           data={filteredConversations}
@@ -150,6 +153,9 @@ export default function ChatScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="chatbubbles-outline" size={40} color="#94A3B8" />
+              </View>
               <Text style={styles.emptyTitle}>No boards yet</Text>
               <Text style={styles.emptyText}>
                 Accept or apply to a job and the coordination board will appear here.
@@ -161,15 +167,14 @@ export default function ChatScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    paddingTop: 48,
+    padding: SCREEN_PADDING.content,
     backgroundColor: "#F8FAFC",
   },
   centered: {
@@ -191,14 +196,14 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   backButton: {
     backgroundColor: "#0F172A",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   backButtonText: {
     color: "#FFFFFF",
@@ -208,19 +213,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#CBD5E1",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
     color: "#0F172A",
   },
   row: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 16,
-    marginBottom: 10,
+    padding: SPACING.md,
+    marginBottom: SPACING.xs,
   },
   name: {
     fontSize: 16,
@@ -242,32 +247,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyCard: {
-    marginTop: 24,
+    marginTop: SPACING.xl,
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: RADIUS.xxl,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 20,
+    padding: SPACING.xl,
     alignItems: "center",
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: SPACING.md,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#0F172A",
-    marginBottom: 6,
+    marginBottom: SPACING.xs / 2,
   },
   emptyText: {
     fontSize: 13,
     lineHeight: 20,
     textAlign: "center",
     color: "#64748B",
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
   refreshButton: {
     backgroundColor: "#0F172A",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
   },
   refreshLabel: {
     color: "#FFFFFF",

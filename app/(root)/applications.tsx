@@ -9,14 +9,16 @@ import {
   Alert,
   Linking,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { getApiUrl } from "@/lib/fetch"
+import { waitForClerkToken } from "@/lib/session"
+import { SCREEN_PADDING } from "@/constants/layout"
 
 type ApplicationStatus = "pending" | "accepted" | "rejected"
 
@@ -259,7 +261,7 @@ export default function ApplicationsScreen() {
         return
       }
 
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       const response = await fetch(getApiUrl("/api/applications/client"), {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -308,7 +310,7 @@ export default function ApplicationsScreen() {
     setUpdatingStatus(application.id)
 
     try {
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/status`), {
         method: "PATCH",
         headers: {
@@ -343,7 +345,7 @@ export default function ApplicationsScreen() {
     setSavingMetaId(application.id)
 
     try {
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/client-meta`), {
         method: "PATCH",
         headers: {
@@ -384,7 +386,7 @@ export default function ApplicationsScreen() {
     setSharingContactId(application.id)
 
     try {
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/contact`), {
         method: "PATCH",
         headers: {
@@ -422,7 +424,7 @@ export default function ApplicationsScreen() {
     setSubmittingReviewId(application.id)
 
     try {
-      const token = await getToken()
+      const token = await waitForClerkToken(getToken)
       const response = await fetch(getApiUrl(`/api/applications/${application.id}/reviews`), {
         method: "POST",
         headers: {
@@ -499,13 +501,13 @@ export default function ApplicationsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAFC]">
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: SCREEN_PADDING.content, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F172A" />}
       >
         <View className="mb-5">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="mb-4 self-start rounded-2xl bg-slate-900 px-4 py-2.5"
+            className="mb-4 self-start rounded-full bg-slate-900 px-4 py-2.5"
           >
             <Text className="font-bold text-white">Back</Text>
           </TouchableOpacity>
@@ -528,9 +530,12 @@ export default function ApplicationsScreen() {
         </View>
 
         {jobs.length === 0 ? (
-          <View className="rounded-[28px] border border-slate-200 bg-white p-6">
+          <View className="items-center rounded-[28px] border border-slate-200 bg-white p-6">
+            <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+              <Ionicons name="briefcase-outline" size={32} color="#94A3B8" />
+            </View>
             <Text className="text-lg font-bold text-slate-900">No applications yet</Text>
-            <Text className="mt-2 text-sm leading-6 text-slate-500">
+            <Text className="mt-2 text-center text-sm leading-6 text-slate-500">
               When freelancers apply to your jobs, they will appear here with their reviews, quotes, and simple coordination board.
             </Text>
           </View>
@@ -540,7 +545,7 @@ export default function ApplicationsScreen() {
           const summary = job.applicationSummary || buildSummary(job.applications)
 
           return (
-            <View key={job.id} className="mb-6 rounded-[30px] bg-white p-5" style={{ borderWidth: 1, borderColor: "#E2E8F0" }}>
+            <View key={job.id} className="mb-6 rounded-[28px] bg-white p-5" style={{ borderWidth: 1, borderColor: "#E2E8F0" }}>
               <View className="mb-4 flex-row items-start justify-between">
                 <View className="flex-1 pr-4">
                   <Text className="text-xl font-bold text-slate-950">{job.serviceType}</Text>

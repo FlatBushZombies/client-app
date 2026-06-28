@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect } from "react"
-import { Text, View, TouchableOpacity, ActivityIndicator, Image, Platform } from "react-native"
+import { Text, View, TouchableOpacity, ActivityIndicator, Image } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
 import { ensureBackendUser } from "@/lib/userSync"
+import { SPACING } from "@/constants/layout"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -49,29 +51,29 @@ export default function Index() {
 
   if (!isLoaded) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
           <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
         </View>
-        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: 24 }} />
-      </View>
+        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: SPACING.xl }} />
+      </SafeAreaView>
     )
   }
 
   if (isSignedIn) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
           <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
         </View>
-        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: 24 }} />
+        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: SPACING.xl }} />
         <Text className="mt-3 text-sm text-gray-400 tracking-wide font-jakarta">Redirecting…</Text>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <View className="flex-1 bg-white overflow-hidden">
+    <SafeAreaView className="flex-1 bg-white overflow-hidden">
 
       {/* ── decorative top corner rings ── */}
       <View className="absolute w-[300px] h-[300px] rounded-full border border-gray-200"
@@ -84,8 +86,8 @@ export default function Index() {
       <View
         className="flex-1 px-7"
         style={{
-          paddingTop: Platform.OS === "ios" ? 60 : 40,
-          paddingBottom: Platform.OS === "ios" ? 40 : 24,
+          paddingTop: SPACING.lg,
+          paddingBottom: SPACING.xl,
         }}
       >
 
@@ -159,6 +161,6 @@ export default function Index() {
 
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   )
 }

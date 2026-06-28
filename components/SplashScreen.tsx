@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { Animated, Easing, Platform, Text, View } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface SplashScreenProps {
   onFinish?: () => void
@@ -15,6 +16,8 @@ const WHITE       = "#ffffff"
 const INK         = "#0f1f14"
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
+  const insets = useSafeAreaInsets()
+
   // ── animated values ────────────────────────────────────────────────────────
   const arcScale1   = useRef(new Animated.Value(0.6)).current
   const arcOpacity1 = useRef(new Animated.Value(0)).current
@@ -203,7 +206,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         style={{
           opacity:  auraOpacity,
           position: "absolute",
-          top:      Platform.OS === "ios" ? 148 : 130,
+          top:      insets.top + 98,
           left:      20,
           width:    110,
           height:   110,
@@ -217,7 +220,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         style={{
           flex:       1,
           paddingHorizontal: 36,
-          paddingTop: Platform.OS === "ios" ? 110 : 90,
+          paddingTop: insets.top + 60,
           justifyContent: "flex-start",
         }}
       >
@@ -287,7 +290,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
                 fontSize:   38,
                 color:      "#fff",
                 lineHeight: 44,
-                fontFamily: "DMSerifDisplay-Regular", // Register this in your app
+                fontFamily: "DMSerifDisplay_400Regular",
                 letterSpacing: -1,
               }}
             >
@@ -319,7 +322,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
             textTransform: "uppercase",
             color:         GREEN,
             marginBottom:  22,
-            fontFamily:   "DMSans-Medium",
+            fontFamily:   "DMSans_500Medium",
           }}
         >
           QuickHands Now
@@ -339,7 +342,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
                   lineHeight:   46,
                   letterSpacing: -1.5,
                   color:        isEm ? GREEN : INK,
-                  fontFamily:   isEm ? "DMSerifDisplay-Italic" : "DMSerifDisplay-Regular",
+                  fontFamily:   isEm ? "DMSerifDisplay_400Regular_Italic" : "DMSerifDisplay_400Regular",
                   marginRight:   5,
                 }}
               >
@@ -359,7 +362,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
             lineHeight:   22,
             fontWeight:   "300",
             maxWidth:     240,
-            fontFamily:   "DMSans-Light",
+            fontFamily:   "DMSans_300Light",
             marginBottom: 32,
           }}
         >
@@ -394,7 +397,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
               }),
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "500", letterSpacing: 0.2, fontFamily: "DMSans-Medium" }}>
+            <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "500", letterSpacing: 0.2, fontFamily: "DMSans_500Medium" }}>
               Get started
             </Text>
           </View>
@@ -424,11 +427,11 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
           alignItems:    "center",
           justifyContent: "center",
           gap:           6,
-          paddingBottom: Platform.OS === "ios" ? 52 : 34,
+          paddingBottom: insets.bottom + 18,
         }}
       >
         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: GREEN, opacity: 0.4 }} />
-        <Text style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 0.5, fontFamily: "DMSans-Regular" }}>
+        <Text style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 0.5, fontFamily: "DMSans_400Regular" }}>
           Access top-tier specialists
         </Text>
       </Animated.View>

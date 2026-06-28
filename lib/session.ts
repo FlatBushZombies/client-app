@@ -1,12 +1,16 @@
 export async function waitForClerkToken(
   getToken: () => Promise<string | null>,
-  attempts = 4,
-  delayMs = 250
+  attempts = 6,
+  delayMs = 300
 ) {
   for (let index = 0; index < attempts; index += 1) {
-    const token = await getToken()
-    if (token) {
-      return token
+    try {
+      const token = await getToken()
+      if (token) {
+        return token
+      }
+    } catch (error) {
+      console.warn("[Auth] Failed to resolve Clerk token", error)
     }
 
     if (index < attempts - 1) {

@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@clerk/clerk-expo";
 import { getApiUrl } from "@/lib/fetch";
 import { waitForClerkToken } from "@/lib/session";
+import { SPACING, RADIUS, BUTTON } from "@/constants/layout";
 
 const CLIENT_TAGS = [
   { kind: "ready-for-visit", label: "Ready for visit" },
@@ -311,7 +312,7 @@ export function ConversationChatScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 12,
+    paddingTop: SPACING.sm,
   },
   title: {
     fontSize: 22,
@@ -322,15 +323,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#475569",
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
   nextActionCard: {
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
     borderColor: "#BFDBFE",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   nextActionLabel: {
     fontSize: 12,
@@ -355,13 +356,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   timeline: {
-    paddingBottom: 12,
+    paddingBottom: SPACING.sm,
   },
   messageCard: {
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: SPACING.sm,
   },
   mine: {
     backgroundColor: "#ECFDF5",
@@ -390,20 +391,20 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: "center",
     color: "#64748B",
-    marginTop: 28,
+    marginTop: SPACING.xl,
     lineHeight: 20,
   },
   tagGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   tagChip: {
     backgroundColor: "#E2E8F0",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   tagChipActive: {
     backgroundColor: "#DBEAFE",
@@ -420,30 +421,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
   },
   composerLabel: {
     fontSize: 12,
     fontWeight: "700",
     color: "#475569",
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
   },
   input: {
     minHeight: 76,
     borderWidth: 1,
     borderColor: "#CBD5E1",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
     color: "#0F172A",
     textAlignVertical: "top",
-    marginBottom: 10,
+    marginBottom: SPACING.xs + 2,
   },
   sendButton: {
     backgroundColor: "#0F172A",
-    borderRadius: 14,
-    paddingVertical: 12,
+    borderRadius: BUTTON.radius,
+    paddingVertical: BUTTON.paddingVertical,
     alignItems: "center",
   },
   sendButtonText: {

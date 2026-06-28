@@ -1,9 +1,10 @@
 import { router, SplashScreen, Stack } from "expo-router";
 import './globals.css';
-import { ClerkProvider } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-expo";
 import { LogBox, Pressable, Text, View } from "react-native";
 import { tokenCache } from "@/lib/auth";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
+import { configurePushNotifications, registerDevicePushToken } from "@/lib/pushNotifications";
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -11,6 +12,16 @@ import {
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
 } from "@expo-google-fonts/plus-jakarta-sans";
+import {
+  DMSans_300Light,
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+} from "@expo-google-fonts/dm-sans";
+import {
+  DMSerifDisplay_400Regular,
+  DMSerifDisplay_400Regular_Italic,
+} from "@expo-google-fonts/dm-serif-display";
 import { useEffect, useState } from "react";
 import CustomSplashScreen from "@/components/SplashScreen";
 
@@ -130,7 +141,7 @@ function InAppNotificationBanner() {
             style={{
               color: "#111827",
               fontSize: 14,
-              fontFamily: "PlusJakartaSans-Bold",
+              fontFamily: "PlusJakartaSans_700Bold",
               marginBottom: 2,
             }}
           >
@@ -141,7 +152,7 @@ function InAppNotificationBanner() {
               color: "#4B5563",
               fontSize: 13,
               lineHeight: 18,
-              fontFamily: "PlusJakartaSans-Medium",
+              fontFamily: "PlusJakartaSans_500Medium",
             }}
           >
             {copy.body}
@@ -161,7 +172,7 @@ function InAppNotificationBanner() {
             style={{
               color: copy.accent,
               fontSize: 11,
-              fontFamily: "PlusJakartaSans-SemiBold",
+              fontFamily: "PlusJakartaSans_600SemiBold",
             }}
           >
             View
@@ -172,12 +183,58 @@ function InAppNotificationBanner() {
   );
 }
 
+function PushNotificationRegistration() {
+  const { getToken, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const [registeredForUserId, setRegisteredForUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    configurePushNotifications();
+  }, []);
+
+  useEffect(() => {
+    if (!isSignedIn || !user?.id) {
+      setRegisteredForUserId(null);
+      return;
+    }
+
+    if (registeredForUserId === user.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await registerDevicePushToken(getToken);
+        if (!cancelled) {
+          setRegisteredForUserId(user.id);
+        }
+      } catch (error) {
+        console.warn("[Push] Client app registration failed", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, isSignedIn, registeredForUserId, user?.id]);
+
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
+    DMSans_300Light,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSerifDisplay_400Regular,
+    DMSerifDisplay_400Regular_Italic,
   });
 
   // Controls whether the custom animated splash is visible.
@@ -200,6 +257,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <SocketProvider>
+        <PushNotificationRegistration />
 
         {/* App content renders behind the splash; revealed once it fades out */}
         <Stack screenOptions={{ headerShown: false }} />

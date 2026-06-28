@@ -7,11 +7,12 @@ import { router } from "expo-router"
 import {
   FlatList,
   RefreshControl,
-  SafeAreaView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
 
 const NotificationsScreen = () => {
   const {
@@ -137,10 +138,10 @@ const NotificationsScreen = () => {
         activeOpacity={0.7}
         style={{
           backgroundColor: item.read ? "#FFF" : "#F8FAFC",
-          marginHorizontal: 16,
-          marginBottom: 12,
-          borderRadius: 16,
-          padding: 16,
+          marginHorizontal: SCREEN_PADDING.content,
+          marginBottom: SPACING.sm,
+          borderRadius: RADIUS.md,
+          padding: SPACING.md,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: item.read ? 0.03 : 0.08,
@@ -235,8 +236,8 @@ const NotificationsScreen = () => {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal: 20,
-          paddingVertical: 16,
+          paddingHorizontal: SCREEN_PADDING.content,
+          paddingVertical: SPACING.md,
           backgroundColor: "#FFF",
           borderBottomWidth: 1,
           borderBottomColor: "#E5E7EB",
@@ -247,7 +248,7 @@ const NotificationsScreen = () => {
           style={{
             width: 40,
             height: 40,
-            borderRadius: 12,
+            borderRadius: RADIUS.sm,
             backgroundColor: "#F3F4F6",
             alignItems: "center",
             justifyContent: "center",
@@ -309,7 +310,7 @@ const NotificationsScreen = () => {
           data={notifications}
           renderItem={renderNotification}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 24 }}
+          contentContainerStyle={{ paddingTop: SPACING.md, paddingBottom: SPACING.xl }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3B82F6"]} />
           }

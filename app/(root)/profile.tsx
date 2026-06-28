@@ -24,6 +24,7 @@ import {
 } from "lucide-react-native"
 import { router } from "expo-router"
 import { getApiUrl } from "@/lib/fetch"
+import { waitForClerkToken } from "@/lib/session"
 
 // ─── Shadow tokens ─────────────────────────────────────────────────────────────
 const shadow = {
@@ -56,7 +57,7 @@ const Profile = () => {
     const fetchStats = async () => {
       if (!user?.id) return
       try {
-        const token = await getToken()
+        const token = await waitForClerkToken(getToken)
         if (!token) { setLoading(false); return }
 
         const jobsResponse = await fetch(getApiUrl(`/api/jobs?clerkId=${user.id}`))
@@ -121,7 +122,7 @@ const Profile = () => {
           </View>
 
           <Pressable
-            className="w-10 h-10 rounded-2xl bg-neutral-100 items-center justify-center"
+            className="w-10 h-10 rounded-xl bg-neutral-100 items-center justify-center"
             style={shadow.stat}
           >
             <Settings size={17} color="#374151" strokeWidth={1.8} />
@@ -129,7 +130,7 @@ const Profile = () => {
         </View>
 
         {/* ── Hero Card ── */}
-        <View className="px-4 pb-2">
+        <View className="px-5 pb-2">
           <View
             className="rounded-[28px] overflow-hidden"
             style={[{ backgroundColor: "#0C1A10" }, shadow.hero]}
@@ -178,7 +179,7 @@ const Profile = () => {
                     {user.fullName || "Unnamed User"}
                   </Text>
                   <View
-                    className="self-start rounded-[10px] px-3 py-1.5"
+                    className="self-start rounded-xl px-3 py-1.5"
                     style={{ backgroundColor: "rgba(255,255,255,0.09)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}
                   >
                     <Text className="text-white/60 text-[11px] font-medium" numberOfLines={1}>
@@ -225,14 +226,14 @@ const Profile = () => {
         </View>
 
         {/* ── Post a New Task CTA ── */}
-        <View className="px-4 pt-4">
+        <View className="px-5 pt-4">
           <Pressable
             onPress={() => router.push("/(root)/service")}
             className="flex-row items-center bg-white rounded-[20px] px-4 py-4 border border-neutral-100 gap-3.5"
             style={shadow.card}
           >
             <View
-              className="w-10 h-10 rounded-[14px] bg-neutral-900 items-center justify-center"
+              className="w-10 h-10 rounded-xl bg-neutral-900 items-center justify-center"
               style={shadow.avatar}
             >
               <Plus size={17} color="#fff" strokeWidth={2.2} />
@@ -240,20 +241,20 @@ const Profile = () => {
             <Text className="flex-1 text-neutral-900 text-[14px] font-semibold">
               Post a New Task
             </Text>
-            <View className="w-7 h-7 rounded-[9px] bg-neutral-100 items-center justify-center">
+            <View className="w-7 h-7 rounded-xl bg-neutral-100 items-center justify-center">
               <ChevronRight size={13} color="#a3a3a3" strokeWidth={2.2} />
             </View>
           </Pressable>
         </View>
 
         {/* ── Manage section ── */}
-        <View className="px-4 mt-6">
+        <View className="px-5 mt-6">
           <Text className="text-neutral-400 text-[10px] font-bold tracking-[2.5px] uppercase mb-3 pl-1">
             Manage
           </Text>
 
           <View
-            className="bg-white rounded-[22px] border border-neutral-100 overflow-hidden"
+            className="bg-white rounded-[24px] border border-neutral-100 overflow-hidden"
             style={shadow.card}
           >
             <MenuRow
@@ -284,7 +285,7 @@ const Profile = () => {
         </View>
 
         {/* ── Sign Out ── */}
-        <View className="px-4 mt-4">
+        <View className="px-5 mt-4">
           <Pressable
             onPress={() => signOut()}
             className="flex-row items-center justify-center gap-3 rounded-[20px] py-4 bg-white border border-rose-100"
@@ -353,7 +354,7 @@ const MenuRow = ({
 }) => (
   <Pressable className="flex-row items-center px-4 py-[15px] gap-3.5">
     <View
-      className="w-10 h-10 rounded-[14px] items-center justify-center"
+      className="w-10 h-10 rounded-xl items-center justify-center"
       style={{ backgroundColor: accentLight, borderWidth: 1, borderColor: `${accentIcon}22` }}
     >
       <Icon size={17} color={accentIcon} strokeWidth={1.8} />
@@ -364,7 +365,7 @@ const MenuRow = ({
       <Text className="text-neutral-400 text-[11px]">{subtitle}</Text>
     </View>
 
-    <View className="w-7 h-7 rounded-[9px] bg-neutral-100 items-center justify-center">
+    <View className="w-7 h-7 rounded-xl bg-neutral-100 items-center justify-center">
       <ChevronRight size={13} color="#a3a3a3" strokeWidth={2.2} />
     </View>
   </Pressable>

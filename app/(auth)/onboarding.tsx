@@ -2,17 +2,18 @@
 
 import { useState } from "react"
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
   Dimensions,
   Platform,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { router } from "expo-router"
 import { useUser } from "@clerk/clerk-expo"
 import Swiper from "react-native-swiper"
 import { Ionicons } from "@expo/vector-icons"
+import { SCREEN_PADDING, RADIUS, BUTTON } from "@/constants/layout"
 
 const { width } = Dimensions.get("window")
 
@@ -81,7 +82,7 @@ const OnboardingScreen = () => {
               style={{
                 paddingHorizontal: 20,
                 paddingVertical: 10,
-                borderRadius: 20,
+                borderRadius: RADIUS.pill,
                 backgroundColor: "#F3F4F6",
               }}
             >
@@ -90,7 +91,7 @@ const OnboardingScreen = () => {
                   fontSize: 14,
                   fontWeight: "600",
                   color: "#6B7280",
-                  fontFamily: "Jakarta-SemiBold",
+                  fontFamily: "PlusJakartaSans_600SemiBold",
                 }}
               >
                 Skip
@@ -138,7 +139,7 @@ const OnboardingScreen = () => {
                 flex: 1,
                 alignItems: "center",
                 justifyContent: "center",
-                paddingHorizontal: 32,
+                paddingHorizontal: SCREEN_PADDING.hero,
                 paddingBottom: Platform.OS === "ios" ? 200 : 180,
               }}
             >
@@ -172,7 +173,7 @@ const OnboardingScreen = () => {
                   marginBottom: 20,
                   lineHeight: 40,
                   letterSpacing: -0.5,
-                  fontFamily: "Jakarta-Bold",
+                  fontFamily: "PlusJakartaSans_700Bold",
                 }}
               >
                 {item.title}
@@ -186,7 +187,7 @@ const OnboardingScreen = () => {
                   textAlign: "center",
                   lineHeight: 26,
                   paddingHorizontal: 8,
-                  fontFamily: "Jakarta",
+                  fontFamily: "PlusJakartaSans_400Regular",
                 }}
               >
                 {item.description}
@@ -202,7 +203,7 @@ const OnboardingScreen = () => {
             bottom: Platform.OS === "ios" ? 50 : 30,
             left: 0,
             right: 0,
-            paddingHorizontal: 32,
+            paddingHorizontal: SCREEN_PADDING.hero,
           }}
         >
           <TouchableOpacity
@@ -210,8 +211,8 @@ const OnboardingScreen = () => {
             activeOpacity={0.85}
             style={{
               backgroundColor: "#15803D",
-              borderRadius: 18,
-              paddingVertical: 18,
+              borderRadius: BUTTON.radius,
+              paddingVertical: BUTTON.paddingVertical,
               paddingHorizontal: 24,
               flexDirection: "row",
               alignItems: "center",
@@ -229,7 +230,7 @@ const OnboardingScreen = () => {
                 fontSize: 16,
                 fontWeight: "700",
                 marginRight: 8,
-                fontFamily: "Jakarta-Bold",
+                fontFamily: "PlusJakartaSans_700Bold",
               }}
             >
               {isLastSlide ? "Get Started" : "Continue"}
@@ -261,7 +262,7 @@ const OnboardingScreen = () => {
                 style={{
                   fontSize: 12,
                   color: "#9CA3AF",
-                  fontFamily: "Jakarta",
+                  fontFamily: "PlusJakartaSans_400Regular",
                 }}
               >
                 Join thousands of satisfied clients

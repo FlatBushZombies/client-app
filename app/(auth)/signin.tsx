@@ -2,11 +2,11 @@
 
 import { useEffect } from "react"
 import {
-  SafeAreaView,
   View,
   Text,
   ActivityIndicator,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { useUser } from "@clerk/clerk-expo"
 import { router } from "expo-router"
 import OAuth from "@/components/OAuth"

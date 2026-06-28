@@ -10,9 +10,9 @@ import { useEffect, useState } from "react"
 import { useSocket } from "@/contexts/SocketContext"
 import { getApiUrl } from "@/lib/fetch"
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   Text,
@@ -21,6 +21,8 @@ import {
   View,
   Platform,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { SCREEN_PADDING, RADIUS, SPACING, BUTTON } from "@/constants/layout"
 
 const { width } = Dimensions.get("window")
 const CARD_WIDTH = width * 0.415
@@ -116,7 +118,8 @@ const HomeScreen = () => {
   if (checkingAuth) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-[#f8f8f6]">
-        <Text style={{ color: "#9ca3af", fontFamily: "DMSans-Regular" }}>Checking session...</Text>
+        <ActivityIndicator size="large" color="#16a34a" />
+        <Text style={{ marginTop: SPACING.sm, color: "#9ca3af", fontFamily: "DMSans_400Regular" }}>Checking session...</Text>
       </SafeAreaView>
     )
   }
@@ -150,10 +153,10 @@ const HomeScreen = () => {
 
           {/* Greeting */}
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 0.2, fontFamily: "DMSans-Regular" }}>
+            <Text style={{ fontSize: 11, color: "#9ca3af", letterSpacing: 0.2, fontFamily: "DMSans_400Regular" }}>
               Good day,
             </Text>
-            <Text style={{ fontSize: 17, fontWeight: "600", color: "#0f1f14", marginTop: 1, fontFamily: "DMSans-SemiBold" }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: "#0f1f14", marginTop: 1, fontFamily: "DMSans_600SemiBold" }}>
               {user?.fullName || "User"}
             </Text>
             {/* Location row */}
@@ -169,7 +172,7 @@ const HomeScreen = () => {
                   fontSize: 11,
                   color: locationDetected ? "#16a34a" : "#9ca3af",
                   fontWeight: "500",
-                  fontFamily: "DMSans-Medium",
+                  fontFamily: "DMSans_500Medium",
                 }}
               >
                 {locationLabel}
@@ -183,7 +186,7 @@ const HomeScreen = () => {
             style={{
               width:           40,
               height:          40,
-              borderRadius:    14,
+              borderRadius:    RADIUS.sm,
               backgroundColor: "#f4f4f2",
               alignItems:      "center",
               justifyContent:  "center",
@@ -212,7 +215,7 @@ const HomeScreen = () => {
                     color: "#ffffff",
                     fontSize: 9,
                     fontWeight: "700",
-                    fontFamily: "DMSans-SemiBold",
+                    fontFamily: "DMSans_600SemiBold",
                   }}
                 >
                   {unreadBadgeLabel}
@@ -226,8 +229,8 @@ const HomeScreen = () => {
         <View
           style={{
             backgroundColor:  "#ffffff",
-            paddingHorizontal: 20,
-            paddingBottom:     18,
+            paddingHorizontal: SCREEN_PADDING.content,
+            paddingBottom:     SPACING.lg,
             borderBottomWidth:  0.5,
             borderBottomColor: "#f0f0ee",
           }}
@@ -241,7 +244,7 @@ const HomeScreen = () => {
               textTransform: "uppercase",
               color:         "#16a34a",
               marginBottom:   6,
-              fontFamily:    "DMSans-Medium",
+              fontFamily:    "DMSans_500Medium",
             }}
           >
             QuickHands Now
@@ -255,11 +258,11 @@ const HomeScreen = () => {
               lineHeight:    31,
               letterSpacing: -0.5,
               marginBottom:  18,
-              fontFamily:    "DMSerifDisplay-Regular",
+              fontFamily:    "DMSerifDisplay_400Regular",
             }}
           >
             {"Find "}
-            <Text style={{ fontFamily: "DMSerifDisplay-Italic", color: "#16a34a" }}>specialists</Text>
+            <Text style={{ fontFamily: "DMSerifDisplay_400Regular_Italic", color: "#16a34a" }}>specialists</Text>
             {"\nnear you."}
           </Text>
 
@@ -269,7 +272,7 @@ const HomeScreen = () => {
               flexDirection:    "row",
               alignItems:       "center",
               backgroundColor:  "#f8f8f6",
-              borderRadius:     14,
+              borderRadius:     RADIUS.md,
               borderWidth:      0.5,
               borderColor:      "#e5e7eb",
               paddingHorizontal: 14,
@@ -283,7 +286,7 @@ const HomeScreen = () => {
               onChangeText={handleSearch}
               placeholder="Search for a specialist or service"
               placeholderTextColor="#9ca3af"
-              style={{ flex: 1, fontSize: 13, color: "#374151", fontFamily: "DMSans-Regular" }}
+              style={{ flex: 1, fontSize: 13, color: "#374151", fontFamily: "DMSans_400Regular" }}
             />
             {isSearching && (
               <Text style={{ fontSize: 10, color: "#9ca3af" }}>Searching…</Text>
@@ -311,7 +314,7 @@ const HomeScreen = () => {
                   style={{
                     paddingHorizontal: 13,
                     paddingVertical:    6,
-                    borderRadius:       99,
+                    borderRadius:       RADIUS.pill,
                     backgroundColor:   isActive ? "#dcfce7" : "#f4f4f2",
                     borderWidth:        0.5,
                     borderColor:       isActive ? "#86efac" : "#e5e7eb",
@@ -322,7 +325,7 @@ const HomeScreen = () => {
                       fontSize:   11.5,
                       fontWeight: "500",
                       color:      isActive ? "#15803d" : "#374151",
-                      fontFamily: "DMSans-Medium",
+                      fontFamily: "DMSans_500Medium",
                     }}
                   >
                     {term}
@@ -335,7 +338,7 @@ const HomeScreen = () => {
           {/* Search results */}
           {searchQuery.length > 0 && searchResults.length > 0 && (
             <View style={{ marginTop: 14 }}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#0f1f14", marginBottom: 8, fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#0f1f14", marginBottom: 8, fontFamily: "DMSans_600SemiBold" }}>
                 {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} found
               </Text>
               {searchResults.map((job: any) => (
@@ -345,19 +348,19 @@ const HomeScreen = () => {
                     backgroundColor: "#ffffff",
                     borderWidth:      0.5,
                     borderColor:     "#efefed",
-                    borderRadius:    14,
+                    borderRadius:    RADIUS.md,
                     padding:          12,
                     marginBottom:      8,
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                     {job.serviceType}
                   </Text>
-                  <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, fontFamily: "DMSans-Regular" }}>
+                  <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
                     Budget: ${job.maxPrice} · {job.specialistChoice || "Any specialist"}
                   </Text>
                   {job.additionalInfo && (
-                    <Text numberOfLines={2} style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontFamily: "DMSans-Regular" }}>
+                    <Text numberOfLines={2} style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
                       {job.additionalInfo}
                     </Text>
                   )}
@@ -367,8 +370,8 @@ const HomeScreen = () => {
           )}
 
           {searchQuery.length > 0 && !isSearching && searchResults.length === 0 && (
-            <View style={{ marginTop: 12, padding: 16, backgroundColor: "#f8f8f6", borderRadius: 14, alignItems: "center" }}>
-              <Text style={{ fontSize: 13, color: "#9ca3af", fontFamily: "DMSans-Regular" }}>
+            <View style={{ marginTop: 12, padding: 16, backgroundColor: "#f8f8f6", borderRadius: RADIUS.md, alignItems: "center" }}>
+              <Text style={{ fontSize: 13, color: "#9ca3af", fontFamily: "DMSans_400Regular" }}>
                 {`No jobs found for "${searchQuery}"`}
               </Text>
             </View>
@@ -394,11 +397,11 @@ const HomeScreen = () => {
               marginBottom:      14,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
               Popular Services
             </Text>
             <TouchableOpacity>
-              <Text style={{ fontSize: 12, color: "#16a34a", fontWeight: "500", fontFamily: "DMSans-Medium" }}>
+              <Text style={{ fontSize: 12, color: "#16a34a", fontWeight: "500", fontFamily: "DMSans_500Medium" }}>
                 View all
               </Text>
             </TouchableOpacity>
@@ -415,7 +418,7 @@ const HomeScreen = () => {
                 activeOpacity={0.92}
                 style={{
                   width:           CARD_WIDTH,
-                  borderRadius:    18,
+                  borderRadius:    RADIUS.lg,
                   overflow:        "hidden",
                   backgroundColor: "#ffffff",
                   borderWidth:      0.5,
@@ -438,13 +441,13 @@ const HomeScreen = () => {
                       alignItems:        "center",
                       gap:               5,
                       backgroundColor:   "rgba(255,255,255,0.92)",
-                      borderRadius:       99,
+                      borderRadius:       RADIUS.pill,
                       paddingHorizontal: 9,
                       paddingVertical:    4,
                     }}
                   >
                     <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#16a34a" }} />
-                    <Text style={{ fontSize: 10.5, fontWeight: "600", color: "#374151", fontFamily: "DMSans-SemiBold" }}>
+                    <Text style={{ fontSize: 10.5, fontWeight: "600", color: "#374151", fontFamily: "DMSans_600SemiBold" }}>
                       {provider.providerCount.toLocaleString()}
                     </Text>
                   </View>
@@ -452,10 +455,10 @@ const HomeScreen = () => {
 
                 {/* Card footer */}
                 <View style={{ padding: 12, backgroundColor: "#ffffff" }}>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                     {provider.title}
                   </Text>
-                  <Text style={{ fontSize: 10.5, color: "#9ca3af", marginTop: 2, fontFamily: "DMSans-Regular" }}>
+                  <Text style={{ fontSize: 10.5, color: "#9ca3af", marginTop: 2, fontFamily: "DMSans_400Regular" }}>
                     {provider.providerCount} providers available
                   </Text>
                 </View>
@@ -473,7 +476,7 @@ const HomeScreen = () => {
             borderBottomColor: "#f0f0ee",
           }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f1f14", marginBottom: 14, fontFamily: "DMSans-SemiBold" }}>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f1f14", marginBottom: 14, fontFamily: "DMSans_600SemiBold" }}>
             How it works
           </Text>
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -492,7 +495,7 @@ const HomeScreen = () => {
                 style={{
                   width:           36,
                   height:          36,
-                  borderRadius:    11,
+                  borderRadius:    RADIUS.sm,
                   backgroundColor: "#eff6ff",
                   alignItems:      "center",
                   justifyContent:  "center",
@@ -501,10 +504,10 @@ const HomeScreen = () => {
               >
                 <Ionicons name="search" size={18} color="#2563eb" />
               </View>
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                 Find a Pro
               </Text>
-              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans-Regular" }}>
+              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
                 Search verified professionals
               </Text>
             </View>
@@ -524,7 +527,7 @@ const HomeScreen = () => {
                 style={{
                   width:           36,
                   height:          36,
-                  borderRadius:    11,
+                  borderRadius:    RADIUS.sm,
                   backgroundColor: "#fffbeb",
                   alignItems:      "center",
                   justifyContent:  "center",
@@ -533,10 +536,10 @@ const HomeScreen = () => {
               >
                 <Ionicons name="star" size={18} color="#d97706" />
               </View>
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                 Read Reviews
               </Text>
-              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans-Regular" }}>
+              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
                 Real ratings from customers
               </Text>
             </View>
@@ -544,7 +547,7 @@ const HomeScreen = () => {
         </View>
 
         {/* ── Utility cards ── */}
-        <View style={{ padding: 16, paddingTop: 16 }}>
+        <View style={{ paddingHorizontal: SCREEN_PADDING.content, paddingVertical: SPACING.md }}>
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
             {/* Feedback */}
             <TouchableOpacity
@@ -559,7 +562,7 @@ const HomeScreen = () => {
                 minHeight:        90,
               }}
             >
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
                 How do you like the app?
               </Text>
               <View style={{ alignItems: "flex-end", marginTop: "auto", paddingTop: 10 }}>
@@ -580,7 +583,7 @@ const HomeScreen = () => {
                 minHeight:        90,
               }}
             >
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
                 Contact Support
               </Text>
               <View style={{ alignItems: "flex-end", marginTop: "auto", paddingTop: 10 }}>
@@ -605,10 +608,10 @@ const HomeScreen = () => {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans-SemiBold" }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                 Are you a specialist?
               </Text>
-              <Text style={{ fontSize: 11.5, color: "#9ca3af", marginTop: 3, lineHeight: 17, fontFamily: "DMSans-Regular" }}>
+              <Text style={{ fontSize: 11.5, color: "#9ca3af", marginTop: 3, lineHeight: 17, fontFamily: "DMSans_400Regular" }}>
                 Find clients and earn with QuickHands
               </Text>
             </View>
@@ -633,9 +636,9 @@ const HomeScreen = () => {
       {/* ── Bottom CTA ── */}
       <View
         style={{
-          paddingHorizontal: 20,
-          paddingTop:         14,
-          paddingBottom:      Platform.OS === "ios" ? 20 : 16,
+          paddingHorizontal: SCREEN_PADDING.content,
+          paddingTop:         SPACING.md,
+          paddingBottom:      SPACING.md,
           backgroundColor:   "#ffffff",
           borderTopWidth:     0.5,
           borderTopColor:    "#f0f0ee",
@@ -646,8 +649,8 @@ const HomeScreen = () => {
           activeOpacity={0.88}
           style={{
             backgroundColor: "#0f1f14",
-            borderRadius:    16,
-            paddingVertical: 15,
+            borderRadius:    BUTTON.radius,
+            paddingVertical: BUTTON.paddingVertical,
             alignItems:      "center",
             ...Platform.select({
               ios: {
@@ -660,7 +663,7 @@ const HomeScreen = () => {
             }),
           }}
         >
-          <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600", fontFamily: "DMSans-SemiBold", letterSpacing: 0.1 }}>
+          <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600", fontFamily: "DMSans_600SemiBold", letterSpacing: 0.1 }}>
             Post Your Task
           </Text>
         </TouchableOpacity>
