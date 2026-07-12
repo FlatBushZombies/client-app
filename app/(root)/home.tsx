@@ -22,7 +22,8 @@ import {
   Platform,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { SCREEN_PADDING, RADIUS, SPACING, BUTTON } from "@/constants/layout"
+import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
+import PostJobModal from "@/components/PostJobModal"
 
 const { width } = Dimensions.get("window")
 const CARD_WIDTH = width * 0.415
@@ -73,6 +74,7 @@ const HomeScreen = () => {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [activeSearch, setActiveSearch] = useState<string | null>(null)
+  const [postJobVisible, setPostJobVisible] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -128,7 +130,7 @@ const HomeScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f8f6" }}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 88 }}>
 
         {/* ── Header ── */}
         <View
@@ -633,41 +635,43 @@ const HomeScreen = () => {
 
       </ScrollView>
 
-      {/* ── Bottom CTA ── */}
+      {/* ── Floating "+" FAB ── */}
       <View
         style={{
-          paddingHorizontal: SCREEN_PADDING.content,
-          paddingTop:         SPACING.md,
-          paddingBottom:      SPACING.md,
-          backgroundColor:   "#ffffff",
-          borderTopWidth:     0.5,
-          borderTopColor:    "#f0f0ee",
+          position:   "absolute",
+          bottom:     22,
+          left:        0,
+          right:       0,
+          alignItems: "center",
+          zIndex:     10,
+          ...Platform.select({
+            ios: {
+              shadowColor:   "#000",
+              shadowOffset:  { width: 0, height: 6 },
+              shadowOpacity: 0.22,
+              shadowRadius:  14,
+            },
+            android: { elevation: 10 },
+          }),
         }}
       >
         <TouchableOpacity
-          onPress={() => router.push("/(root)/service")}
+          onPress={() => setPostJobVisible(true)}
           activeOpacity={0.88}
-          style={{
-            backgroundColor: "#0f1f14",
-            borderRadius:    BUTTON.radius,
-            paddingVertical: BUTTON.paddingVertical,
-            alignItems:      "center",
-            ...Platform.select({
-              ios: {
-                shadowColor:   "#0f1f14",
-                shadowOffset:  { width: 0, height: 4 },
-                shadowOpacity: 0.22,
-                shadowRadius:  10,
-              },
-              android: { elevation: 5 },
-            }),
-          }}
+          style={{ width: 60, height: 60, borderRadius: 30, overflow: "hidden" }}
         >
-          <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600", fontFamily: "DMSans_600SemiBold", letterSpacing: 0.1 }}>
-            Post Your Task
-          </Text>
+          <LinearGradient
+            colors={["#1e9e68", "#0a1f14"]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <PostJobModal visible={postJobVisible} onClose={() => setPostJobVisible(false)} />
 
     </SafeAreaView>
   )

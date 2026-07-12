@@ -4,7 +4,11 @@ import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-expo";
 import { LogBox, Pressable, Text, View } from "react-native";
 import { tokenCache } from "@/lib/auth";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
-import { configurePushNotifications, registerDevicePushToken } from "@/lib/pushNotifications";
+import {
+  configurePushNotifications,
+  registerDevicePushToken,
+  registerNotificationTapHandler,
+} from "@/lib/pushNotifications";
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -190,6 +194,7 @@ function PushNotificationRegistration() {
 
   useEffect(() => {
     configurePushNotifications();
+    return registerNotificationTapHandler();
   }, []);
 
   useEffect(() => {

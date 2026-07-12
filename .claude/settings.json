@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; print\\('\\\\n'.join\\(f'{k}: {v}' for k,v in sorted\\(deps.items\\(\\)\\)\\)\\)\")",
+      "Bash(npm info *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('exports:', d.get\\('exports',''\\)\\); print\\('main:', d.get\\('main',''\\)\\); print\\('description:', d.get\\('description',''\\)\\); print\\('keywords:', d.get\\('keywords',''\\)\\); print\\('peerDeps:', d.get\\('peerDependencies',''\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(python -c \"import sys; lines = sys.stdin.readlines\\(\\); print\\(''.join\\(lines[-60:]\\)\\)\")",
+      "Bash(grep -v \"sql\\\\`\")",
+      "Bash(grep -v \"//.*sql\\(\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\services",
+      "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\config",
+      "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\middleware",
+      "C:\\Users\\gamerrdotcom\\Desktop\\freelance-app\\app\\(root)",
+      "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\controllers",
+      "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\utils",
+      "C:\\Users\\gamerrdotcom\\Desktop\\freelance-app\\components"
+    ]
+  }
+}

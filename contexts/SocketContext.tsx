@@ -25,6 +25,8 @@ export interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
+  type?: string | null;
+  conversationId?: string | null;
   application?: NotificationApplication;
 }
 

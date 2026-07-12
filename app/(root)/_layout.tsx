@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router"
-import { Platform, Text, View } from "react-native"
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import {
   BriefcaseIcon,
   ChatBubbleLeftRightIcon,
@@ -16,255 +16,208 @@ import {
 } from "react-native-heroicons/solid"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSocket } from "@/contexts/SocketContext"
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
 
-const TAB_BAR_HEIGHT = 74
-const TAB_SLOT_HEIGHT = 58
-const ICON_SIZE = 21
+// @callstack/liquid-glass is iOS 26+ only. Import conditionally so
+// the app doesn't crash on Android or older iOS.
+let LiquidGlassView: any = null
+let isLiquidGlassSupported = false
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const lg = require("@callstack/liquid-glass")
+  LiquidGlassView = lg.LiquidGlassView
+  isLiquidGlassSupported = lg.isLiquidGlassSupported ?? false
+} catch {}
 
-const COLOR = {
-  active: "#16a34a",
-  activeLight: "#dcfce7",
-  activeGlow: "#22c55e",
-  inactive: "#94a3b8",
-  bg: "#ffffff",
-  border: "#f1f5f9",
-  badge: "#ef4444",
+const ACTIVE = "#16a34a"
+const INACTIVE = "#94a3b8"
+const BADGE_BG = "#ef4444"
+const ICON_SIZE = 22
+
+type RouteConfig = {
+  name: string
+  OutlineIcon: React.ElementType
+  SolidIcon: React.ElementType
+  label: string
+  hasBadge?: boolean
 }
 
-const TabIcon = ({
-  IconOutline,
-  IconSolid,
-  focused,
-  label,
-  badgeCount = 0,
-}: {
-  IconOutline: any
-  IconSolid: any
-  focused: boolean
-  label: string
-  badgeCount?: number
-}) => {
-  const Icon = focused ? IconSolid : IconOutline
-  const badgeLabel = badgeCount > 99 ? "99+" : badgeCount.toString()
+const ROUTE_CONFIG: RouteConfig[] = [
+  { name: "home",         OutlineIcon: HomeIcon,                SolidIcon: HomeSolid,       label: "Home"    },
+  { name: "service",      OutlineIcon: BriefcaseIcon,           SolidIcon: BriefcaseSolid,  label: "Jobs"    },
+  { name: "chat",         OutlineIcon: ChatBubbleLeftRightIcon, SolidIcon: ChatSolid,        label: "Chat"    },
+  { name: "applications", OutlineIcon: RocketLaunchIcon,        SolidIcon: RocketSolid,      label: "Tasks",  hasBadge: true },
+  { name: "profile",      OutlineIcon: UserIcon,                SolidIcon: UserSolid,        label: "Profile" },
+]
+
+function GlassTabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets()
+  const { unreadCount } = useSocket()
+
+  const useGlass = Platform.OS === "ios" && isLiquidGlassSupported && LiquidGlassView !== null
+
+  const tabItems = ROUTE_CONFIG.map((config) => {
+    const route = state.routes.find((r) => r.name === config.name)
+    if (!route) return null
+    const routeIndex = state.routes.indexOf(route)
+    const focused = state.index === routeIndex
+    const Icon = focused ? config.SolidIcon : config.OutlineIcon
+    const badgeCount = config.hasBadge ? unreadCount : 0
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      })
+      if (!focused && !event.defaultPrevented) {
+        navigation.navigate(route.name)
+      }
+    }
+
+    return (
+      <TouchableOpacity
+        key={route.key}
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={styles.tabItem}
+      >
+        <View style={styles.iconWrap}>
+          <Icon
+            size={ICON_SIZE}
+            color={focused ? ACTIVE : INACTIVE}
+            strokeWidth={focused ? 2.1 : 1.8}
+          />
+          {badgeCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {badgeCount > 99 ? "99+" : String(badgeCount)}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.label, focused && styles.labelActive]}>
+          {config.label}
+        </Text>
+      </TouchableOpacity>
+    )
+  })
+
+  const pillContent = <View style={styles.tabRow}>{tabItems}</View>
 
   return (
     <View
-      style={{
-        width: 68,
-        height: TAB_SLOT_HEIGHT,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 4,
-      }}
+      style={[
+        styles.outerWrap,
+        { paddingBottom: Math.max(insets.bottom, 10) },
+      ]}
+      pointerEvents="box-none"
     >
-      <View
-        style={{
-          position: "absolute",
-          top: 4,
-          width: focused ? 18 : 0,
-          height: 3,
-          borderRadius: 999,
-          backgroundColor: focused ? COLOR.active : "transparent",
-          opacity: focused ? 1 : 0,
-        }}
-      />
-
-      <View
-        style={{
-          width: 44,
-          height: 34,
-          borderRadius: 14,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: focused ? COLOR.activeLight : "transparent",
-          overflow: "hidden",
-          ...(focused
-            ? Platform.select({
-                ios: {
-                  shadowColor: COLOR.activeGlow,
-                  shadowOffset: { width: 0, height: 5 },
-                  shadowOpacity: 0.24,
-                  shadowRadius: 12,
-                },
-                android: {
-                  elevation: 4,
-                },
-              })
-            : {}),
-        }}
-      >
-        {focused ? (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "52%",
-              backgroundColor: "rgba(255,255,255,0.28)",
-            }}
-          />
-        ) : null}
-
-        <Icon
-          size={ICON_SIZE}
-          color={focused ? COLOR.active : COLOR.inactive}
-          strokeWidth={focused ? 2.05 : 1.8}
-        />
-
-        {badgeCount > 0 ? (
-          <View
-            style={{
-              position: "absolute",
-              top: 2,
-              right: 0,
-              minWidth: 18,
-              height: 18,
-              paddingHorizontal: 4,
-              borderRadius: 9,
-              backgroundColor: COLOR.badge,
-              borderWidth: 1,
-              borderColor: COLOR.bg,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: "#ffffff",
-                fontSize: 9,
-                lineHeight: 11,
-                fontFamily: "PlusJakartaSans_700Bold",
-              }}
-            >
-              {badgeLabel}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      <Text
-        numberOfLines={1}
-        style={{
-          marginTop: 4,
-          fontSize: 10,
-          lineHeight: 13,
-          letterSpacing: 0.24,
-          fontFamily: focused ? "PlusJakartaSans_700Bold" : "PlusJakartaSans_500Medium",
-          color: focused ? COLOR.active : COLOR.inactive,
-        }}
-      >
-        {label}
-      </Text>
+      {useGlass ? (
+        <LiquidGlassView
+          style={styles.pill}
+          effect="regular"
+          interactive
+        >
+          {pillContent}
+        </LiquidGlassView>
+      ) : (
+        <View style={[styles.pill, styles.pillFallback]}>
+          {pillContent}
+        </View>
+      )}
     </View>
   )
 }
 
-export default function Layout() {
-  const insets = useSafeAreaInsets()
-  const { unreadCount } = useSocket()
+const styles = StyleSheet.create({
+  outerWrap: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    backgroundColor: "transparent",
+  },
+  pill: {
+    borderRadius: 36,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  pillFallback: {
+    backgroundColor: Platform.OS === "ios"
+      ? "rgba(252,252,252,0.91)"
+      : "rgba(255,255,255,0.97)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.055)",
+  },
+  tabRow: {
+    flexDirection: "row",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 11,
+    gap: 4,
+  },
+  iconWrap: {
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -7,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 3,
+    borderRadius: 8.5,
+    backgroundColor: BADGE_BG,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 9,
+    lineHeight: 11,
+    fontFamily: "PlusJakartaSans_700Bold",
+  },
+  label: {
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 0.22,
+    fontFamily: "PlusJakartaSans_500Medium",
+    color: INACTIVE,
+  },
+  labelActive: {
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: ACTIVE,
+  },
+})
 
+export default function Layout() {
   return (
     <Tabs
       initialRouteName="home"
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: COLOR.bg,
-          height: TAB_BAR_HEIGHT + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 10),
-          borderTopWidth: 1,
-          borderTopColor: COLOR.border,
-          elevation: 0,
-          ...Platform.select({
-            ios: {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -7 },
-              shadowOpacity: 0.05,
-              shadowRadius: 18,
-            },
-          }),
-        },
-        tabBarItemStyle: {
-          height: TAB_BAR_HEIGHT,
-          justifyContent: "center",
-          alignItems: "center",
-        },
-      }}
+      tabBar={(props) => <GlassTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              IconOutline={HomeIcon}
-              IconSolid={HomeSolid}
-              focused={focused}
-              label="Home"
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="service"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              IconOutline={BriefcaseIcon}
-              IconSolid={BriefcaseSolid}
-              focused={focused}
-              label="Jobs"
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="chat"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              IconOutline={ChatBubbleLeftRightIcon}
-              IconSolid={ChatSolid}
-              focused={focused}
-              label="Chat"
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              IconOutline={UserIcon}
-              IconSolid={UserSolid}
-              focused={focused}
-              label="Profile"
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="applications"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              IconOutline={RocketLaunchIcon}
-              IconSolid={RocketSolid}
-              focused={focused}
-              label="Tasks"
-              badgeCount={unreadCount}
-            />
-          ),
-        }}
-      />
-
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="service" />
+      <Tabs.Screen name="chat" />
+      <Tabs.Screen name="profile" />
+      <Tabs.Screen name="applications" />
       <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   )

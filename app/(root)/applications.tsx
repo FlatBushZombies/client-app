@@ -507,9 +507,24 @@ export default function ApplicationsScreen() {
         <View className="mb-5">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="mb-4 self-start rounded-full bg-slate-900 px-4 py-2.5"
+            activeOpacity={0.7}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              alignSelf: "flex-start",
+              marginBottom: 16,
+              backgroundColor: "#F1F5F9",
+              borderRadius: 20,
+              paddingVertical: 8,
+              paddingLeft: 8,
+              paddingRight: 14,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+            }}
           >
-            <Text className="font-bold text-white">Back</Text>
+            <Ionicons name="chevron-back" size={18} color="#334155" />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>Back</Text>
           </TouchableOpacity>
           <Text className="text-3xl font-bold text-slate-950">Applications</Text>
           <Text className="mt-2 text-sm leading-6 text-slate-500">
@@ -549,7 +564,7 @@ export default function ApplicationsScreen() {
               <View className="mb-4 flex-row items-start justify-between">
                 <View className="flex-1 pr-4">
                   <Text className="text-xl font-bold text-slate-950">{job.serviceType}</Text>
-                  <Text className="mt-1 text-sm text-slate-500">Budget R{Number(job.maxPrice || 0).toFixed(0)}</Text>
+                  <Text className="mt-1 text-sm text-slate-500">Budget US${Number(job.maxPrice || 0).toFixed(0)}</Text>
                 </View>
                 <View className="rounded-2xl bg-slate-950 px-4 py-3">
                   <Text className="text-xs font-semibold uppercase tracking-[1px] text-slate-300">Applications</Text>

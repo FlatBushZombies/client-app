@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useSocket } from "@/contexts/SocketContext"
+import { useSocket, type Notification } from "@/contexts/SocketContext"
+import { navigateForNotificationData } from "@/lib/pushNotifications"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import {
@@ -122,19 +123,27 @@ const NotificationsScreen = () => {
     }
   }
 
-  const handleNotificationPress = async (notificationId: number) => {
-    await markAsRead(notificationId)
-    router.push("/(root)/applications")
+  const handleNotificationPress = async (item: Notification) => {
+    await markAsRead(item.id)
+    if (item.conversationId || item.jobId) {
+      navigateForNotificationData({
+        type: item.type,
+        jobId: item.jobId,
+        conversationId: item.conversationId,
+      })
+    } else {
+      router.push("/(root)/applications")
+    }
   }
 
-  const renderNotification = ({ item }: { item: any }) => {
+  const renderNotification = ({ item }: { item: Notification }) => {
     const iconData = getNotificationIcon(item.message)
     const copy = getNotificationCopy(item.message)
     const showAreaBadge = item.message.toLowerCase().includes("in your area")
 
     return (
       <TouchableOpacity
-        onPress={() => void handleNotificationPress(item.id)}
+        onPress={() => void handleNotificationPress(item)}
         activeOpacity={0.7}
         style={{
           backgroundColor: item.read ? "#FFF" : "#F8FAFC",

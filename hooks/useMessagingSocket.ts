@@ -13,7 +13,9 @@ export type ServerMessage = {
 };
 
 type SendMessageInput = {
-  tag: string;
+  // A structured status tag (e.g. "ready-for-visit") OR free-text chat —
+  // at least one of `tag` or `label` must be non-empty.
+  tag?: string;
   note?: string;
   label?: string;
   clientMessageId?: string;
@@ -163,11 +165,57 @@ export function useMessagingSocket({
     };
   }, [apiBaseUrl, appendMessage, conversationId, enabled, realtimeEnabled, serverUrl]);
 
+  // Safety-net polling: whenever the socket isn't actively connected (either
+  // because realtime is unsupported on this host, or the connection dropped),
+  // fall back to re-fetching message history so the conversation never goes
+  // silently stale. Stops automatically once the socket reconnects.
+  useEffect(() => {
+    if (!enabled || !conversationId || connected) {
+      return;
+    }
+
+    let cancelled = false;
+    const baseApiUrl = apiBaseUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
+
+    const pollMessages = async () => {
+      const token = await waitForClerkToken(getTokenRef.current);
+      if (!token || cancelled) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${baseApiUrl}/api/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        const data = await response.json();
+
+        if (!cancelled && response.ok && data.success && Array.isArray(data.messages)) {
+          data.messages.forEach(appendMessage);
+        }
+      } catch {
+        // Transient network error — the next interval tick will retry.
+      }
+    };
+
+    const intervalId = setInterval(pollMessages, 4000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [apiBaseUrl, appendMessage, connected, conversationId, enabled]);
+
   const sendMessage = useCallback(
     async ({ tag, note, label, clientMessageId }: SendMessageInput) => {
-      const trimmedTag = tag.trim();
+      const trimmedTag = tag?.trim() || "";
       const trimmedNote = note?.trim() || "";
-      if (!trimmedTag) {
+      const trimmedLabel = label?.trim() || "";
+      if (!trimmedTag && !trimmedLabel) {
         return;
       }
 
@@ -180,9 +228,9 @@ export function useMessagingSocket({
 
       const baseApiUrl = apiBaseUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
       const payload = {
-        tag: trimmedTag,
+        ...(trimmedTag ? { tag: trimmedTag } : {}),
         ...(trimmedNote ? { note: trimmedNote } : {}),
-        ...(label?.trim() ? { label: label.trim() } : {}),
+        ...(trimmedLabel ? { label: trimmedLabel } : {}),
         ...(clientMessageId ? { clientMessageId } : {}),
       };
 

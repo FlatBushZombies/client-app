@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Quickhands",
-    "slug": "client-app",
+    "name": "Quickhands Now",
+    "slug": "quickhands-now",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/quickhands.png",
-    "scheme": "clientapp",
+    "scheme": "quickhandsnow",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -27,9 +27,11 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.noirsfera.quickhandsnow"
     },
     "web": {
       "output": "server",
@@ -69,18 +71,18 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "owner": "bigcat87",
+    "owner": "noirsfera",
     "runtimeVersion": {
       "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/c512aa05-9d47-4ad0-aafe-17cfae9f48c0"
     },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c512aa05-9d47-4ad0-aafe-17cfae9f48c0"
+        "projectId": "0ea1f4fb-6b27-4687-9d8a-a0acedc85a0c"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0ea1f4fb-6b27-4687-9d8a-a0acedc85a0c"
     }
   }
 }

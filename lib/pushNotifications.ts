@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { router } from "expo-router";
 import { getApiUrl } from "@/lib/fetch";
 import { waitForClerkToken } from "@/lib/session";
 
@@ -107,4 +108,63 @@ export async function registerDevicePushToken(
   }
 
   return expoPushToken;
+}
+
+export type NotificationTapData = {
+  type?: string | null;
+  jobId?: string | number | null;
+  conversationId?: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * Routes a tapped push notification (or a tapped row in the in-app
+ * notification list, which carries the same shape) to the right screen.
+ * Conversation-carrying notifications always win — they're the most
+ * specific target we have.
+ */
+export function navigateForNotificationData(data: NotificationTapData | null | undefined) {
+  if (!data) return;
+
+  if (data.conversationId) {
+    router.push({
+      pathname: "/(root)/chat",
+      params: { conversationId: String(data.conversationId) },
+    });
+    return;
+  }
+
+  if (data.jobId) {
+    router.push("/(root)/applications");
+  }
+}
+
+let coldStartResponseHandled = false;
+
+/**
+ * Wires up push-notification tap handling: taps while the app is
+ * foregrounded/backgrounded (addNotificationResponseReceivedListener) and
+ * a cold start launched by tapping a notification
+ * (getLastNotificationResponseAsync, checked once). Call once from the
+ * root layout; returns a cleanup function.
+ */
+export function registerNotificationTapHandler() {
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    navigateForNotificationData(
+      response.notification.request.content.data as NotificationTapData
+    );
+  });
+
+  if (!coldStartResponseHandled) {
+    coldStartResponseHandled = true;
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        navigateForNotificationData(
+          response.notification.request.content.data as NotificationTapData
+        );
+      }
+    });
+  }
+
+  return () => subscription.remove();
 }
