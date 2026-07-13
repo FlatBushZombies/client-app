@@ -6,14 +6,20 @@ import { navigateForNotificationData } from "@/lib/pushNotifications"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import {
-  FlatList,
   RefreshControl,
+  SectionList,
   Text,
   TouchableOpacity,
   View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
+import { COLORS, SHADOW } from "@/constants/theme"
+
+type NotificationSection = {
+  title: string | null
+  data: Notification[]
+}
 
 const NotificationsScreen = () => {
   const {
@@ -136,6 +142,31 @@ const NotificationsScreen = () => {
     }
   }
 
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    return (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    )
+  }
+
+  // Group into "New" (anything unread, plus today's items) and "Earlier".
+  // When nothing is unread, render a single ungrouped list with no headers.
+  const hasUnread = notifications.some((n) => !n.read)
+  let sections: NotificationSection[]
+  if (hasUnread) {
+    const fresh = notifications.filter((n) => !n.read || isToday(n.createdAt))
+    const earlier = notifications.filter((n) => n.read && !isToday(n.createdAt))
+    sections = [{ title: "New", data: fresh }]
+    if (earlier.length > 0) {
+      sections.push({ title: "Earlier", data: earlier })
+    }
+  } else {
+    sections = [{ title: null, data: notifications }]
+  }
+
   const renderNotification = ({ item }: { item: Notification }) => {
     const iconData = getNotificationIcon(item.message)
     const copy = getNotificationCopy(item.message)
@@ -146,20 +177,33 @@ const NotificationsScreen = () => {
         onPress={() => void handleNotificationPress(item)}
         activeOpacity={0.7}
         style={{
-          backgroundColor: item.read ? "#FFF" : "#F8FAFC",
+          backgroundColor: item.read ? COLORS.surface : COLORS.surfaceMuted,
           marginHorizontal: SCREEN_PADDING.content,
           marginBottom: SPACING.sm,
-          borderRadius: RADIUS.md,
+          borderRadius: RADIUS.lg,
           padding: SPACING.md,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
+          ...SHADOW.card,
           shadowOpacity: item.read ? 0.03 : 0.08,
-          shadowRadius: 8,
           elevation: item.read ? 1 : 3,
           borderWidth: 1,
-          borderColor: item.read ? "#F1F5F9" : "#E2E8F0",
+          borderColor: item.read ? COLORS.borderSoft : COLORS.border,
         }}
       >
+        {!item.read && (
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              top: SPACING.md,
+              bottom: SPACING.md,
+              width: 3,
+              borderTopRightRadius: 3,
+              borderBottomRightRadius: 3,
+              backgroundColor: COLORS.primary,
+            }}
+          />
+        )}
+
         <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
           <View
             style={{
@@ -169,7 +213,7 @@ const NotificationsScreen = () => {
               backgroundColor: iconData.bg,
               alignItems: "center",
               justifyContent: "center",
-              marginRight: 12,
+              marginRight: SPACING.sm,
             }}
           >
             <Ionicons name={iconData.name} size={24} color={iconData.color} />
@@ -180,8 +224,9 @@ const NotificationsScreen = () => {
               style={{
                 fontSize: 15,
                 fontWeight: "700",
-                color: "#111827",
+                color: COLORS.textPrimary,
                 lineHeight: 20,
+                letterSpacing: -0.2,
                 marginBottom: 4,
               }}
             >
@@ -192,9 +237,9 @@ const NotificationsScreen = () => {
               style={{
                 fontSize: 14,
                 fontWeight: item.read ? "400" : "500",
-                color: "#4B5563",
+                color: COLORS.textSecondary,
                 lineHeight: 20,
-                marginBottom: 8,
+                marginBottom: SPACING.xs,
               }}
             >
               {copy.body}
@@ -206,18 +251,18 @@ const NotificationsScreen = () => {
                   alignSelf: "flex-start",
                   paddingHorizontal: 10,
                   paddingVertical: 5,
-                  borderRadius: 999,
-                  backgroundColor: "#ECFDF5",
-                  marginBottom: 8,
+                  borderRadius: RADIUS.pill,
+                  backgroundColor: COLORS.primarySoft,
+                  marginBottom: SPACING.xs,
                 }}
               >
                 <Text style={{ fontSize: 11, fontWeight: "700", color: "#15803D" }}>In your Area</Text>
               </View>
             ) : null}
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-              <Text style={{ fontSize: 13, color: "#6B7280" }}>{formatTimeAgo(item.createdAt)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.xs }}>
+              <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+              <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
           </View>
 
@@ -227,8 +272,8 @@ const NotificationsScreen = () => {
                 width: 8,
                 height: 8,
                 borderRadius: 4,
-                backgroundColor: "#3B82F6",
-                marginLeft: 8,
+                backgroundColor: COLORS.primary,
+                marginLeft: SPACING.xs,
                 marginTop: 6,
               }}
             />
@@ -238,8 +283,28 @@ const NotificationsScreen = () => {
     )
   }
 
+  const renderSectionHeader = ({ section }: { section: NotificationSection }) => {
+    if (!section.title) return null
+    return (
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "700",
+          color: COLORS.textMuted,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+          marginHorizontal: SCREEN_PADDING.content,
+          marginTop: SPACING.xs,
+          marginBottom: SPACING.sm,
+        }}
+      >
+        {section.title}
+      </Text>
+    )
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <View
         style={{
           flexDirection: "row",
@@ -247,9 +312,9 @@ const NotificationsScreen = () => {
           justifyContent: "space-between",
           paddingHorizontal: SCREEN_PADDING.content,
           paddingVertical: SPACING.md,
-          backgroundColor: "#FFF",
+          backgroundColor: COLORS.surface,
           borderBottomWidth: 1,
-          borderBottomColor: "#E5E7EB",
+          borderBottomColor: COLORS.border,
         }}
       >
         <TouchableOpacity
@@ -258,29 +323,49 @@ const NotificationsScreen = () => {
             width: 40,
             height: 40,
             borderRadius: RADIUS.sm,
-            backgroundColor: "#F3F4F6",
+            backgroundColor: COLORS.surfaceMuted,
+            borderWidth: 1,
+            borderColor: COLORS.border,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="arrow-back" size={20} color="#111827" />
+          <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
 
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", color: COLORS.textPrimary, letterSpacing: -0.3 }}>
             Notifications
           </Text>
-          <Text style={{ fontSize: 12, color: connected ? "#10B981" : "#6B7280", marginTop: 2 }}>
-            {unreadCount > 0 ? `${unreadCount} unread` : connected ? "Live updates on" : "Pull to refresh"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+            {connected && (
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: COLORS.primary,
+                }}
+              />
+            )}
+            <Text style={{ fontSize: 12, color: connected ? COLORS.primary : COLORS.textSecondary }}>
+              {unreadCount > 0 ? `${unreadCount} unread` : connected ? "Live updates on" : "Pull to refresh"}
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
           onPress={() => void markAllAsRead()}
           disabled={unreadCount === 0}
-          style={{ opacity: unreadCount === 0 ? 0.5 : 1 }}
+          style={{
+            opacity: unreadCount === 0 ? 0.5 : 1,
+            paddingHorizontal: SPACING.sm,
+            paddingVertical: 6,
+            borderRadius: RADIUS.pill,
+            backgroundColor: COLORS.primarySoft,
+          }}
         >
-          <Text style={{ fontSize: 13, fontWeight: "600", color: "#16A34A" }}>Read all</Text>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: COLORS.primaryDark }}>Read all</Text>
         </TouchableOpacity>
       </View>
 
@@ -288,40 +373,49 @@ const NotificationsScreen = () => {
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <View
             style={{
-              backgroundColor: "#F3F4F6",
+              backgroundColor: COLORS.surfaceMuted,
+              borderWidth: 1,
+              borderColor: COLORS.borderSoft,
               width: 120,
               height: 120,
               borderRadius: 60,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 24,
+              marginBottom: SPACING.xl,
             }}
           >
-            <Ionicons name="notifications-outline" size={64} color="#9CA3AF" />
+            <Ionicons name="notifications-outline" size={64} color={COLORS.textMuted} />
           </View>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827", marginBottom: 8 }}>
+          <Text style={{ fontSize: 22, fontWeight: "700", color: COLORS.textPrimary, marginBottom: SPACING.xs }}>
             No notifications yet
           </Text>
           <Text
             style={{
               fontSize: 15,
-              color: "#6B7280",
+              color: COLORS.textSecondary,
               textAlign: "center",
               lineHeight: 22,
-              paddingHorizontal: 20,
+              paddingHorizontal: SPACING.lg,
             }}
           >
             You&apos;ll be notified when important application updates happen, including offers being accepted, rejected, or moved to direct contact.
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={notifications}
+        <SectionList
+          sections={sections}
           renderItem={renderNotification}
+          renderSectionHeader={renderSectionHeader}
           keyExtractor={(item) => item.id.toString()}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={{ paddingTop: SPACING.md, paddingBottom: SPACING.xl }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3B82F6"]} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
           }
         />
       )}

@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
+  KeyboardAvoidingView,
   StyleSheet,
+  Animated,
+  Easing,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -22,6 +25,7 @@ import * as SecureStore from "expo-secure-store"
 import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
 import { uploadToCloudinary } from "@/lib/cloudinaryUpload"
+import { COLORS, SHADOW } from "@/constants/theme"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +162,8 @@ const EMPTY_FORM: FormData = {
   maxPrice: "", specialistChoice: "", additionalInfo: "", documents: [],
 }
 
+const TOTAL_STEPS = 5
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FocusInput({
@@ -170,14 +176,14 @@ function FocusInput({
         <Ionicons
           name={icon as any}
           size={16}
-          color={focused ? "#059669" : "#94A3B8"}
+          color={focused ? COLORS.primary : COLORS.textMuted}
           style={{ marginRight: 8 }}
         />
       )}
       {prefix && <Text style={st.inputPrefix}>{prefix}</Text>}
       <TextInput
         style={st.inputText}
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={COLORS.textMuted}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         {...props}
@@ -211,6 +217,10 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const [templates, setTemplates] = useState<JobTemplate[]>([])
   const [activeDateField, setActiveDateField] = useState<DateFieldKey | null>(null)
   const [calendarMonth, setCalendarMonth] = useState(startOfDay(new Date()))
+
+  const [currentStep, setCurrentStep] = useState<number>(0)
+  const stepFade = useRef(new Animated.Value(1)).current
+  const stepAnimatingRef = useRef(false)
 
   const [taskLocation, setTaskLocation] = useState<TaskLocationState>({
     loading: false, label: null, city: null, latitude: null, longitude: null,
@@ -439,6 +449,46 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     update({ selectedServices: updated, serviceType: formData.serviceType.trim() || (updated[0] ?? "") })
   }
 
+  // ── Wizard navigation ─────────────────────────────────────────────────────
+
+  const goToStep = (next: number) => {
+    if (stepAnimatingRef.current || next === currentStep || next < 0 || next > TOTAL_STEPS - 1) return
+    stepAnimatingRef.current = true
+    Keyboard.dismiss()
+    Animated.timing(stepFade, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+      setCurrentStep(next)
+      Animated.timing(stepFade, { toValue: 1, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
+        stepAnimatingRef.current = false
+      })
+    })
+  }
+
+  // Per-step "Next" gates. The full validation set still runs in handleSubmit
+  // as a defensive final check.
+  const stepCanAdvance =
+    currentStep === 0
+      ? Boolean(formData.serviceType.trim() || formData.selectedServices.length > 0)
+      : currentStep === 1
+      ? Boolean(formData.startDate && formData.endDate)
+      : currentStep === 2
+      ? formData.maxPrice.trim().length > 0
+      : currentStep === 3
+      ? uploadingCount === 0
+      : true
+
+  const handleNext = () => {
+    if (currentStep === 3 && uploadingCount > 0) {
+      Alert.alert("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
+      return
+    }
+    if (!stepCanAdvance || currentStep >= TOTAL_STEPS - 1) return
+    goToStep(currentStep + 1)
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) goToStep(currentStep - 1)
+  }
+
   // ── Close / Submit ────────────────────────────────────────────────────────
 
   const handleClose = () => {
@@ -447,6 +497,9 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     setShowSaveTemplate(false)
     setTemplateName("")
     setActiveDateField(null)
+    setCurrentStep(0)
+    stepFade.setValue(1)
+    stepAnimatingRef.current = false
   }
 
   const handleSubmit = useCallback(async () => {
@@ -525,11 +578,39 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
 
   const locationDetected = !taskLocation.loading && !!taskLocation.label
 
+  // ── Review summary rows ───────────────────────────────────────────────────
+
+  const reviewSvcType = formData.serviceType.trim() || formData.selectedServices[0] || ""
+  const reviewRows: Array<{ label: string; value: string; muted?: boolean }> = [
+    { label: "Service", value: reviewSvcType || "Not set", muted: !reviewSvcType },
+    {
+      label: "Categories",
+      value: formData.selectedServices.length > 0 ? formData.selectedServices.join(", ") : "None",
+      muted: formData.selectedServices.length === 0,
+    },
+    {
+      label: "Dates",
+      value: formData.startDate && formData.endDate
+        ? `${formatDateLabel(formData.startDate)} → ${formatDateLabel(formData.endDate)}`
+        : "Not set",
+      muted: !(formData.startDate && formData.endDate),
+    },
+    { label: "Max budget", value: formData.maxPrice ? `US$${formData.maxPrice}` : "Not set", muted: !formData.maxPrice },
+    { label: "Specialist", value: formData.specialistChoice || "No preference", muted: !formData.specialistChoice },
+    { label: "Notes", value: formData.additionalInfo.trim() || "None", muted: !formData.additionalInfo.trim() },
+    {
+      label: "Attachments",
+      value: formData.documents.length === 1 ? "1 file" : `${formData.documents.length} files`,
+      muted: formData.documents.length === 0,
+    },
+  ]
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={st.root}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
 
         {/* ── Header ── */}
         <View style={st.header}>
@@ -540,30 +621,11 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
           <View style={st.closeBtn} />
         </View>
 
-        {/* ── Location Banner ── */}
-        <View style={[st.locationBanner, locationDetected && st.locationBannerDetected]}>
-          {taskLocation.loading ? (
-            <ActivityIndicator size="small" color="#059669" style={{ marginRight: 9 }} />
-          ) : (
-            <View style={[st.locationDot, locationDetected ? st.locationDotOn : st.locationDotOff]} />
-          )}
-          <Text style={[st.locationText, locationDetected && st.locationTextDetected]} numberOfLines={1}>
-            {taskLocation.loading
-              ? "Detecting your area…"
-              : locationDetected
-              ? `${taskLocation.label}  ·  Nearby matching on`
-              : "Location unavailable · Area matching off"}
-          </Text>
-          {!taskLocation.loading && (
-            <TouchableOpacity
-              onPress={() => void loadTaskLocation()}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              {locationDetected
-                ? <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                : <Ionicons name="locate-outline" size={16} color="#94A3B8" />}
-            </TouchableOpacity>
-          )}
+        {/* ── Progress indicator ── */}
+        <View style={st.progressRow}>
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <View key={i} style={[st.progressSegment, i <= currentStep && st.progressSegmentActive]} />
+          ))}
         </View>
 
         {/* ── Scroll body ── */}
@@ -574,259 +636,346 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
         >
+          <Animated.View style={{ opacity: stepFade }}>
 
-          {/* Templates compact row */}
-          {(templates.length > 0 || templatesLoading) && (
-            <View style={st.templatesBar}>
-              <Text style={st.templatesBarLabel}>Templates</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {templatesLoading ? (
-                  <ActivityIndicator size="small" color="#94A3B8" />
-                ) : (
-                  templates.map((t) => (
-                    <View key={t.id} style={st.templateChip}>
-                      <TouchableOpacity onPress={() => applyTemplate(t)} style={{ flex: 1 }}>
-                        <Text style={st.templateChipText} numberOfLines={1}>{t.name}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => void deleteTemplate(t.id)}
-                        style={st.templateChipX}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <Ionicons name="close" size={10} color="#94A3B8" />
-                      </TouchableOpacity>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ── WHAT ── */}
-          <View style={st.section}>
-            <Text style={st.sectionLabel}>What do you need?</Text>
-            <FocusInput
-              placeholder="e.g. Fix a leaking pipe"
-              value={formData.serviceType}
-              onChangeText={(t: string) => update({ serviceType: t })}
-              icon="construct-outline"
-            />
-            <View style={st.chipRow}>
-              {QUICK_SERVICES.map((svc) => {
-                const active = formData.selectedServices.includes(svc)
-                return (
-                  <TouchableOpacity
-                    key={svc}
-                    onPress={() => handleServiceToggle(svc)}
-                    activeOpacity={0.75}
-                    style={[st.chip, active && st.chipActive]}
-                  >
-                    <Text style={[st.chipText, active && st.chipTextActive]}>{svc}</Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
-
-          <Divider />
-
-          {/* ── WHEN ── */}
-          <View style={st.section}>
-            <Text style={st.sectionLabel}>When?</Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => openDatePicker("startDate")}
-                activeOpacity={0.8}
-                style={[st.dateBtn, { flex: 1 }]}
-              >
-                <Ionicons
-                  name="calendar-outline"
-                  size={15}
-                  color={formData.startDate ? "#059669" : "#CBD5E1"}
-                  style={{ marginBottom: 6 }}
-                />
-                <Text style={st.dateBtnLabel}>Start</Text>
-                <Text style={[st.dateBtnValue, !formData.startDate && st.dateBtnPlaceholder]}>
-                  {formatDateLabel(formData.startDate)}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={st.dateArrow}>
-                <Ionicons name="arrow-forward" size={14} color="#CBD5E1" />
-              </View>
-
-              <TouchableOpacity
-                onPress={() => openDatePicker("endDate")}
-                activeOpacity={0.8}
-                style={[st.dateBtn, { flex: 1 }]}
-              >
-                <Ionicons
-                  name="calendar-outline"
-                  size={15}
-                  color={formData.endDate ? "#059669" : "#CBD5E1"}
-                  style={{ marginBottom: 6 }}
-                />
-                <Text style={st.dateBtnLabel}>End</Text>
-                <Text style={[st.dateBtnValue, !formData.endDate && st.dateBtnPlaceholder]}>
-                  {formatDateLabel(formData.endDate)}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Divider />
-
-          {/* ── BUDGET ── */}
-          <View style={st.section}>
-            <Text style={st.sectionLabel}>Max budget</Text>
-            <FocusInput
-              placeholder="0.00"
-              value={formData.maxPrice}
-              onChangeText={(t: string) => update({ maxPrice: t })}
-              keyboardType="numeric"
-              icon="cash-outline"
-              prefix="US$"
-            />
-          </View>
-
-          <Divider />
-
-          {/* ── SPECIALIST ── */}
-          <View style={st.section}>
-            <Text style={st.sectionLabel}>Specialist preference</Text>
-            <View style={{ gap: 8 }}>
-              {SPECIALIST_OPTIONS.map((opt) => {
-                const active = formData.specialistChoice === opt.key
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    onPress={() => update({ specialistChoice: opt.key })}
-                    activeOpacity={0.8}
-                    style={[st.optionRow, active && st.optionRowActive]}
-                  >
-                    <View style={[st.optionIcon, active && st.optionIconActive]}>
-                      <Ionicons name={opt.icon} size={15} color={active ? "#FFFFFF" : "#94A3B8"} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[st.optionTitle, active && st.optionTitleActive]}>{opt.key}</Text>
-                      <Text style={st.optionDesc}>{opt.desc}</Text>
-                    </View>
-                    {active && <Ionicons name="checkmark-circle" size={18} color="#059669" />}
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
-
-          <Divider />
-
-          {/* ── DETAILS ── */}
-          <View style={st.section}>
-            <Text style={st.sectionLabel}>Additional details</Text>
-            <View style={st.textarea}>
-              <TextInput
-                placeholder="Share any requirements, timing constraints, or access notes…"
-                placeholderTextColor="#CBD5E1"
-                value={formData.additionalInfo}
-                onChangeText={(t) => update({ additionalInfo: t })}
-                multiline
-                style={st.textareaInput}
-                textAlignVertical="top"
-              />
-            </View>
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-              <TouchableOpacity onPress={pickPhoto} style={st.attachButton}>
-                <Ionicons name="image-outline" size={16} color="#334155" />
-                <Text style={st.attachButtonText}>Add photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={pickDocument} style={st.attachButton}>
-                <Ionicons name="document-attach-outline" size={16} color="#334155" />
-                <Text style={st.attachButtonText}>Add document</Text>
-              </TouchableOpacity>
-              {uploadingCount > 0 ? <ActivityIndicator size="small" color="#334155" /> : null}
-            </View>
-
-            {formData.documents.length > 0 ? (
-              <View style={{ marginTop: 10, gap: 8 }}>
-                {formData.documents.map((url) => (
-                  <View key={url} style={st.attachmentChip}>
-                    <Ionicons name="document-outline" size={14} color="#475569" />
-                    <Text style={st.attachmentChipText} numberOfLines={1}>
-                      {attachmentNames[url] || url.split("/").pop()}
-                    </Text>
-                    <TouchableOpacity onPress={() => removeAttachment(url)}>
-                      <Ionicons name="close-circle" size={18} color="#94A3B8" />
-                    </TouchableOpacity>
+            {/* ── STEP 0 · WHAT ── */}
+            {currentStep === 0 && (
+              <>
+                {/* Templates compact row */}
+                {(templates.length > 0 || templatesLoading) && (
+                  <View style={st.templatesBar}>
+                    <Text style={st.templatesBarLabel}>Templates</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {templatesLoading ? (
+                        <ActivityIndicator size="small" color={COLORS.textMuted} />
+                      ) : (
+                        templates.map((t) => (
+                          <View key={t.id} style={st.templateChip}>
+                            <TouchableOpacity onPress={() => applyTemplate(t)} style={{ flex: 1 }}>
+                              <Text style={st.templateChipText} numberOfLines={1}>{t.name}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => void deleteTemplate(t.id)}
+                              style={st.templateChipX}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Ionicons name="close" size={10} color={COLORS.textMuted} />
+                            </TouchableOpacity>
+                          </View>
+                        ))
+                      )}
+                    </ScrollView>
                   </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
+                )}
 
-          <Divider />
+                <View style={st.section}>
+                  <Text style={st.sectionLabel}>What do you need?</Text>
+                  <FocusInput
+                    placeholder="e.g. Fix a leaking pipe"
+                    value={formData.serviceType}
+                    onChangeText={(t: string) => update({ serviceType: t })}
+                    icon="construct-outline"
+                  />
+                  <View style={st.chipRow}>
+                    {QUICK_SERVICES.map((svc) => {
+                      const active = formData.selectedServices.includes(svc)
+                      return (
+                        <TouchableOpacity
+                          key={svc}
+                          onPress={() => handleServiceToggle(svc)}
+                          activeOpacity={0.75}
+                          style={[st.chip, active && st.chipActive]}
+                        >
+                          <Text style={[st.chipText, active && st.chipTextActive]}>{svc}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
 
-          {/* ── SAVE TEMPLATE ── */}
-          <View style={st.section}>
-            {showSaveTemplate ? (
-              <View style={{ gap: 10 }}>
-                <FocusInput
-                  placeholder="Template name (optional)"
-                  value={templateName}
-                  onChangeText={setTemplateName}
-                  icon="bookmark-outline"
-                />
+            {/* ── STEP 1 · WHEN ── */}
+            {currentStep === 1 && (
+              <View style={st.section}>
+                <Text style={st.sectionLabel}>When?</Text>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity
-                    onPress={() => { setShowSaveTemplate(false); setTemplateName("") }}
-                    style={st.cancelBtn}
+                    onPress={() => openDatePicker("startDate")}
+                    activeOpacity={0.8}
+                    style={[st.dateBtn, { flex: 1 }]}
                   >
-                    <Text style={st.cancelBtnText}>Cancel</Text>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={15}
+                      color={formData.startDate ? COLORS.primary : "#CBD5E1"}
+                      style={{ marginBottom: 6 }}
+                    />
+                    <Text style={st.dateBtnLabel}>Start</Text>
+                    <Text style={[st.dateBtnValue, !formData.startDate && st.dateBtnPlaceholder]}>
+                      {formatDateLabel(formData.startDate)}
+                    </Text>
                   </TouchableOpacity>
+
+                  <View style={st.dateArrow}>
+                    <Ionicons name="arrow-forward" size={14} color="#CBD5E1" />
+                  </View>
+
                   <TouchableOpacity
-                    onPress={() => void saveCurrentTemplate()}
-                    disabled={savingTemplate}
-                    style={st.saveBtn}
+                    onPress={() => openDatePicker("endDate")}
+                    activeOpacity={0.8}
+                    style={[st.dateBtn, { flex: 1 }]}
                   >
-                    {savingTemplate
-                      ? <ActivityIndicator size="small" color="#FFFFFF" />
-                      : <Text style={st.saveBtnText}>Save template</Text>}
+                    <Ionicons
+                      name="calendar-outline"
+                      size={15}
+                      color={formData.endDate ? COLORS.primary : "#CBD5E1"}
+                      style={{ marginBottom: 6 }}
+                    />
+                    <Text style={st.dateBtnLabel}>End</Text>
+                    <Text style={[st.dateBtnValue, !formData.endDate && st.dateBtnPlaceholder]}>
+                      {formatDateLabel(formData.endDate)}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => setShowSaveTemplate(true)}
-                style={st.saveTemplateToggle}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="bookmark-outline" size={13} color="#94A3B8" />
-                <Text style={st.saveTemplateToggleText}>Save current form as template</Text>
-              </TouchableOpacity>
             )}
-          </View>
+
+            {/* ── STEP 2 · BUDGET & SPECIALIST ── */}
+            {currentStep === 2 && (
+              <>
+                <View style={st.section}>
+                  <Text style={st.sectionLabel}>Max budget</Text>
+                  <FocusInput
+                    placeholder="0.00"
+                    value={formData.maxPrice}
+                    onChangeText={(t: string) => update({ maxPrice: t })}
+                    keyboardType="numeric"
+                    icon="cash-outline"
+                    prefix="US$"
+                  />
+                </View>
+
+                <Divider />
+
+                <View style={st.section}>
+                  <Text style={st.sectionLabel}>Specialist preference</Text>
+                  <View style={{ gap: 8 }}>
+                    {SPECIALIST_OPTIONS.map((opt) => {
+                      const active = formData.specialistChoice === opt.key
+                      return (
+                        <TouchableOpacity
+                          key={opt.key}
+                          onPress={() => update({ specialistChoice: opt.key })}
+                          activeOpacity={0.8}
+                          style={[st.optionRow, active && st.optionRowActive]}
+                        >
+                          <View style={[st.optionIcon, active && st.optionIconActive]}>
+                            <Ionicons name={opt.icon} size={15} color={active ? COLORS.surface : COLORS.textMuted} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[st.optionTitle, active && st.optionTitleActive]}>{opt.key}</Text>
+                            <Text style={st.optionDesc}>{opt.desc}</Text>
+                          </View>
+                          {active && <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />}
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* ── STEP 3 · DETAILS & ATTACHMENTS ── */}
+            {currentStep === 3 && (
+              <View style={st.section}>
+                <Text style={st.sectionLabel}>Additional details</Text>
+                <View style={st.textarea}>
+                  <TextInput
+                    placeholder="Share any requirements, timing constraints, or access notes…"
+                    placeholderTextColor="#CBD5E1"
+                    value={formData.additionalInfo}
+                    onChangeText={(t) => update({ additionalInfo: t })}
+                    multiline
+                    style={st.textareaInput}
+                    textAlignVertical="top"
+                  />
+                </View>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                  <TouchableOpacity onPress={pickPhoto} style={st.attachButton}>
+                    <Ionicons name="image-outline" size={16} color="#334155" />
+                    <Text style={st.attachButtonText}>Add photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={pickDocument} style={st.attachButton}>
+                    <Ionicons name="document-attach-outline" size={16} color="#334155" />
+                    <Text style={st.attachButtonText}>Add document</Text>
+                  </TouchableOpacity>
+                  {uploadingCount > 0 ? <ActivityIndicator size="small" color="#334155" /> : null}
+                </View>
+
+                {formData.documents.length > 0 ? (
+                  <View style={{ marginTop: 10, gap: 8 }}>
+                    {formData.documents.map((url) => (
+                      <View key={url} style={st.attachmentChip}>
+                        <Ionicons name="document-outline" size={14} color="#475569" />
+                        <Text style={st.attachmentChipText} numberOfLines={1}>
+                          {attachmentNames[url] || url.split("/").pop()}
+                        </Text>
+                        <TouchableOpacity onPress={() => removeAttachment(url)}>
+                          <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            )}
+
+            {/* ── STEP 4 · REVIEW & POST ── */}
+            {currentStep === 4 && (
+              <>
+                <View style={st.section}>
+                  <Text style={st.sectionLabel}>Review your task</Text>
+
+                  <View style={st.reviewCard}>
+                    {reviewRows.map((row, i) => (
+                      <View key={row.label} style={[st.reviewRow, i === reviewRows.length - 1 && st.reviewRowLast]}>
+                        <Text style={st.reviewLabel}>{row.label}</Text>
+                        <Text
+                          style={[st.reviewValue, row.muted && st.reviewValueMuted]}
+                          numberOfLines={row.label === "Notes" ? 3 : 2}
+                        >
+                          {row.value}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Location banner (informational, auto-detected) */}
+                  <View
+                    style={[
+                      st.locationBanner,
+                      st.locationBannerCard,
+                      locationDetected && st.locationBannerDetected,
+                      locationDetected && st.locationBannerCardDetected,
+                    ]}
+                  >
+                    {taskLocation.loading ? (
+                      <ActivityIndicator size="small" color={COLORS.primary} style={{ marginRight: 9 }} />
+                    ) : (
+                      <View style={[st.locationDot, locationDetected ? st.locationDotOn : st.locationDotOff]} />
+                    )}
+                    <Text style={[st.locationText, locationDetected && st.locationTextDetected]} numberOfLines={1}>
+                      {taskLocation.loading
+                        ? "Detecting your area…"
+                        : locationDetected
+                        ? `${taskLocation.label}  ·  Nearby matching on`
+                        : "Location unavailable · Area matching off"}
+                    </Text>
+                    {!taskLocation.loading && (
+                      <TouchableOpacity
+                        onPress={() => void loadTaskLocation()}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        {locationDetected
+                          ? <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                          : <Ionicons name="locate-outline" size={16} color={COLORS.textMuted} />}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                <Divider />
+
+                {/* ── SAVE TEMPLATE ── */}
+                <View style={st.section}>
+                  {showSaveTemplate ? (
+                    <View style={{ gap: 10 }}>
+                      <FocusInput
+                        placeholder="Template name (optional)"
+                        value={templateName}
+                        onChangeText={setTemplateName}
+                        icon="bookmark-outline"
+                      />
+                      <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity
+                          onPress={() => { setShowSaveTemplate(false); setTemplateName("") }}
+                          style={st.cancelBtn}
+                        >
+                          <Text style={st.cancelBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => void saveCurrentTemplate()}
+                          disabled={savingTemplate}
+                          style={st.saveBtn}
+                        >
+                          {savingTemplate
+                            ? <ActivityIndicator size="small" color={COLORS.surface} />
+                            : <Text style={st.saveBtnText}>Save template</Text>}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setShowSaveTemplate(true)}
+                      style={st.saveTemplateToggle}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="bookmark-outline" size={13} color={COLORS.textMuted} />
+                      <Text style={st.saveTemplateToggleText}>Save current form as template</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+
+          </Animated.View>
 
           <View style={{ height: 16 }} />
         </ScrollView>
 
-        {/* ── Footer ── */}
+        {/* ── Footer (wizard navigation) ── */}
         <View style={st.footer}>
-          <TouchableOpacity
-            onPress={() => void handleSubmit()}
-            disabled={loading || uploadingCount > 0}
-            activeOpacity={0.85}
-            style={st.submitBtn}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={st.submitBtnText}>Post Task</Text>
-                <View style={st.submitArrow}>
-                  <Ionicons name="arrow-forward" size={15} color="#059669" />
-                </View>
-              </>
-            )}
-          </TouchableOpacity>
+          {currentStep > 0 ? (
+            <TouchableOpacity onPress={handleBack} disabled={loading} activeOpacity={0.8} style={st.backBtn}>
+              <Ionicons name="arrow-back" size={15} color={COLORS.textSecondary} />
+              <Text style={st.backBtnText}>Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View />
+          )}
+
+          {currentStep < TOTAL_STEPS - 1 ? (
+            <TouchableOpacity
+              onPress={handleNext}
+              disabled={currentStep === 3 ? false : !stepCanAdvance}
+              activeOpacity={0.85}
+              style={[st.submitBtn, !stepCanAdvance && st.submitBtnDisabled]}
+            >
+              <Text style={st.submitBtnText}>Next</Text>
+              <View style={st.submitArrow}>
+                <Ionicons name="arrow-forward" size={15} color={COLORS.primary} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => void handleSubmit()}
+              disabled={loading || uploadingCount > 0}
+              activeOpacity={0.85}
+              style={st.submitBtn}
+            >
+              {loading ? (
+                <ActivityIndicator color={COLORS.surface} />
+              ) : (
+                <>
+                  <Text style={st.submitBtnText}>Post Task</Text>
+                  <View style={st.submitArrow}>
+                    <Ionicons name="arrow-forward" size={15} color={COLORS.primary} />
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Calendar Overlay ── */}
@@ -858,7 +1007,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                   onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
                   style={st.calNavBtn}
                 >
-                  <Ionicons name="chevron-back" size={14} color="#64748B" />
+                  <Ionicons name="chevron-back" size={14} color={COLORS.textSecondary} />
                   <Text style={st.calNavBtnText}>Prev</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -866,7 +1015,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                   style={[st.calNavBtn, st.calNavBtnNext]}
                 >
                   <Text style={[st.calNavBtnText, st.calNavBtnTextNext]}>Next</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+                  <Ionicons name="chevron-forward" size={14} color={COLORS.surface} />
                 </TouchableOpacity>
               </View>
 
@@ -908,6 +1057,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
           </View>
         )}
 
+      </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   )
@@ -918,7 +1068,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
 const st = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
 
   attachButton: {
@@ -935,14 +1085,14 @@ const st = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  attachmentChipText: { flex: 1, fontSize: 13, color: "#0F172A" },
+  attachmentChipText: { flex: 1, fontSize: 13, color: COLORS.textPrimary },
 
   // Header
   header: {
@@ -951,7 +1101,7 @@ const st = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     height: 56,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
@@ -966,8 +1116,29 @@ const st = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     letterSpacing: -0.3,
+  },
+
+  // Progress indicator
+  progressRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  progressSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+  },
+  progressSegmentActive: {
+    backgroundColor: COLORS.primary,
   },
 
   // Location banner
@@ -976,13 +1147,26 @@ const st = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 11,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surfaceMuted,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
     gap: 9,
   },
   locationBannerDetected: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: COLORS.primarySoft,
+    borderBottomColor: "#D1FAE5",
+  },
+  // Card variant used on the Review step
+  locationBannerCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: 14,
+  },
+  locationBannerCardDetected: {
+    borderColor: "#D1FAE5",
     borderBottomColor: "#D1FAE5",
   },
   locationDot: {
@@ -991,15 +1175,15 @@ const st = StyleSheet.create({
     borderRadius: 3.5,
     flexShrink: 0,
   },
-  locationDotOn: { backgroundColor: "#059669" },
+  locationDotOn: { backgroundColor: COLORS.primary },
   locationDotOff: { backgroundColor: "#CBD5E1" },
   locationText: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
     flex: 1,
   },
-  locationTextDetected: { color: "#059669" },
+  locationTextDetected: { color: COLORS.primary },
 
   // Scroll
   scrollContent: {
@@ -1018,16 +1202,16 @@ const st = StyleSheet.create({
   templatesBarLabel: {
     fontSize: 10,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
     letterSpacing: 0.9,
     textTransform: "uppercase",
   },
   templateChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     borderRadius: 20,
     paddingLeft: 12,
     paddingRight: 8,
@@ -1059,7 +1243,7 @@ const st = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     letterSpacing: -0.1,
   },
   divider: {
@@ -1074,26 +1258,26 @@ const st = StyleSheet.create({
     alignItems: "center",
     height: 50,
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 14,
   },
   inputFocused: {
-    borderColor: "#059669",
+    borderColor: COLORS.primary,
     backgroundColor: "#FAFFFE",
   },
   inputPrefix: {
     fontSize: 15,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     marginRight: 4,
   },
   inputText: {
     flex: 1,
     fontSize: 15,
     fontFamily: "PlusJakartaSans_400Regular",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     padding: 0,
   },
 
@@ -1107,29 +1291,29 @@ const st = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
   },
   chipActive: {
-    backgroundColor: "#0F172A",
-    borderColor: "#0F172A",
+    backgroundColor: COLORS.textPrimary,
+    borderColor: COLORS.textPrimary,
   },
   chipText: {
     fontSize: 13,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#64748B",
+    color: COLORS.textSecondary,
   },
   chipTextActive: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
   },
 
   // Date
   dateBtn: {
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -1144,7 +1328,7 @@ const st = StyleSheet.create({
   dateBtnValue: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
   },
   dateBtnPlaceholder: {
     color: "#CBD5E1",
@@ -1163,55 +1347,96 @@ const st = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   optionRowActive: {
-    borderColor: "#059669",
+    borderColor: COLORS.primary,
     backgroundColor: "#FAFFFE",
   },
   optionIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
   optionIconActive: {
-    backgroundColor: "#059669",
+    backgroundColor: COLORS.primary,
   },
   optionTitle: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     marginBottom: 1,
   },
   optionTitleActive: {
-    color: "#047857",
+    color: COLORS.primaryDark,
   },
   optionDesc: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_400Regular",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
   },
 
   // Textarea
   textarea: {
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 14,
     minHeight: 96,
   },
   textareaInput: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_400Regular",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     minHeight: 72,
     padding: 0,
     lineHeight: 21,
+  },
+
+  // Review summary
+  reviewCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
+    ...SHADOW.card,
+  },
+  reviewRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  reviewRowLast: {
+    borderBottomWidth: 0,
+  },
+  reviewLabel: {
+    fontSize: 12,
+    fontFamily: "PlusJakartaSans_500Medium",
+    color: COLORS.textMuted,
+    flexShrink: 0,
+    paddingTop: 1,
+  },
+  reviewValue: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "PlusJakartaSans_600SemiBold",
+    color: COLORS.textPrimary,
+    textAlign: "right",
+  },
+  reviewValueMuted: {
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: COLORS.textMuted,
   },
 
   // Save template
@@ -1223,14 +1448,14 @@ const st = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
   },
   saveTemplateToggleText: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
   },
   cancelBtn: {
     flex: 1,
@@ -1240,58 +1465,77 @@ const st = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
   },
   cancelBtnText: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#64748B",
+    color: COLORS.textSecondary,
   },
   saveBtn: {
     flex: 2,
     height: 44,
     borderRadius: 10,
-    backgroundColor: "#0F172A",
+    backgroundColor: COLORS.textPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
   saveBtnText: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#FFFFFF",
+    color: COLORS.surface,
   },
 
   // Footer
   footer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: Platform.OS === "ios" ? 28 : 18,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
+  },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 26,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontFamily: "PlusJakartaSans_600SemiBold",
+    color: COLORS.textSecondary,
   },
   submitBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#059669",
+    backgroundColor: COLORS.primary,
     borderRadius: 30,
     paddingVertical: 15,
     paddingLeft: 24,
     paddingRight: 16,
     minWidth: 152,
     ...Platform.select({
-      ios: { shadowColor: "#059669", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16 },
+      ios: { shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16 },
       android: { elevation: 8 },
     }),
+  },
+  submitBtnDisabled: {
+    opacity: 0.45,
   },
   submitBtnText: {
     fontSize: 16,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#FFFFFF",
+    color: COLORS.surface,
     letterSpacing: 0.2,
     flex: 1,
     textAlign: "center",
@@ -1300,7 +1544,7 @@ const st = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1318,7 +1562,7 @@ const st = StyleSheet.create({
     backgroundColor: "rgba(15, 23, 42, 0.45)",
   },
   calSheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -1333,7 +1577,7 @@ const st = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.border,
     alignSelf: "center",
     marginBottom: 18,
   },
@@ -1346,7 +1590,7 @@ const st = StyleSheet.create({
   calFieldLabel: {
     fontSize: 10,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#059669",
+    color: COLORS.primary,
     letterSpacing: 0.7,
     textTransform: "uppercase",
     marginBottom: 3,
@@ -1354,7 +1598,7 @@ const st = StyleSheet.create({
   calMonthTitle: {
     fontSize: 20,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     letterSpacing: -0.3,
   },
   calCloseBtn: {
@@ -1377,21 +1621,21 @@ const st = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 20,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
   },
   calNavBtnNext: {
-    backgroundColor: "#0F172A",
-    borderColor: "#0F172A",
+    backgroundColor: COLORS.textPrimary,
+    borderColor: COLORS.textPrimary,
   },
   calNavBtnText: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#64748B",
+    color: COLORS.textSecondary,
   },
   calNavBtnTextNext: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
   },
   calDayHeaders: {
     flexDirection: "row",
@@ -1420,7 +1664,7 @@ const st = StyleSheet.create({
     marginBottom: 4,
   },
   calCellSelected: {
-    backgroundColor: "#0F172A",
+    backgroundColor: COLORS.textPrimary,
   },
   calCellDisabled: {
     opacity: 0.28,
@@ -1428,10 +1672,10 @@ const st = StyleSheet.create({
   calCellText: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
   },
   calCellTextSelected: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontFamily: "PlusJakartaSans_700Bold",
   },
 })

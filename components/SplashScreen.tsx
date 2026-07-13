@@ -65,29 +65,29 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     // Arc rings
     const arcs = Animated.parallel([
       Animated.parallel([
-        Animated.timing(arcScale1,   { toValue: 1, duration: 1100, delay: 80,  easing: ease,  useNativeDriver: true }),
-        Animated.timing(arcOpacity1, { toValue: 1, duration: 700,  delay: 80,  easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcScale1,   { toValue: 1, duration: 900, delay: 60,  easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcOpacity1, { toValue: 1, duration: 550, delay: 60,  easing: ease,  useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(arcScale2,   { toValue: 1, duration: 1100, delay: 220, easing: ease,  useNativeDriver: true }),
-        Animated.timing(arcOpacity2, { toValue: 1, duration: 700,  delay: 220, easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcScale2,   { toValue: 1, duration: 900, delay: 160, easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcOpacity2, { toValue: 1, duration: 550, delay: 160, easing: ease,  useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(arcDotScale, { toValue: 1, duration: 400,  delay: 960, easing: spring, useNativeDriver: true }),
-        Animated.timing(arcDotOpac,  { toValue: 1, duration: 300,  delay: 960, easing: ease,  useNativeDriver: true }),
+        Animated.timing(arcDotScale, { toValue: 1, duration: 350,  delay: 700, easing: spring, useNativeDriver: true }),
+        Animated.timing(arcDotOpac,  { toValue: 1, duration: 250,  delay: 700, easing: ease,  useNativeDriver: true }),
       ]),
     ])
 
     // Aura glow
     const aura = Animated.timing(auraOpacity, {
-      toValue: 1, duration: 1200, delay: 300, easing: ease, useNativeDriver: true,
+      toValue: 1, duration: 950, delay: 220, easing: ease, useNativeDriver: true,
     })
 
     // Logo entrance
     const logo = Animated.parallel([
-      Animated.timing(logoOpacity, { toValue: 1,    duration: 600, delay: 280, easing: ease,   useNativeDriver: true }),
-      Animated.timing(logoY,       { toValue: 0,    duration: 700, delay: 280, easing: spring, useNativeDriver: true }),
-      Animated.timing(logoScale,   { toValue: 1,    duration: 700, delay: 280, easing: spring, useNativeDriver: true }),
+      Animated.timing(logoOpacity, { toValue: 1,    duration: 500, delay: 200, easing: ease,   useNativeDriver: true }),
+      Animated.timing(logoY,       { toValue: 0,    duration: 550, delay: 200, easing: spring, useNativeDriver: true }),
+      Animated.timing(logoScale,   { toValue: 1,    duration: 550, delay: 200, easing: spring, useNativeDriver: true }),
     ])
 
     // Pulse ring — loops after logo appears
@@ -106,37 +106,37 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
     // Divider (useNativeDriver: false — animating width)
     const divider = Animated.parallel([
-      Animated.timing(dividerWidth,   { toValue: 40, duration: 550, delay: 750, easing: ease, useNativeDriver: false }),
-      Animated.timing(dividerOpacity, { toValue: 1,  duration: 350, delay: 750, easing: ease, useNativeDriver: false }),
+      Animated.timing(dividerWidth,   { toValue: 40, duration: 450, delay: 550, easing: ease, useNativeDriver: false }),
+      Animated.timing(dividerOpacity, { toValue: 1,  duration: 300, delay: 550, easing: ease, useNativeDriver: false }),
     ])
 
     // App name
     const appName = Animated.parallel([
-      Animated.timing(appNameOpacity, { toValue: 1, duration: 500, delay: 960,  easing: ease,   useNativeDriver: true }),
-      Animated.timing(appNameY,       { toValue: 0, duration: 500, delay: 960,  easing: spring, useNativeDriver: true }),
+      Animated.timing(appNameOpacity, { toValue: 1, duration: 400, delay: 700,  easing: ease,   useNativeDriver: true }),
+      Animated.timing(appNameY,       { toValue: 0, duration: 400, delay: 700,  easing: spring, useNativeDriver: true }),
     ])
 
     // Words stagger
     const wordSeq = wordAnims.map((a, i) =>
       Animated.parallel([
-        Animated.timing(a.opacity, { toValue: 1, duration: 450, delay: 1120 + i * 105, easing: ease,   useNativeDriver: true }),
-        Animated.timing(a.y,       { toValue: 0, duration: 450, delay: 1120 + i * 105, easing: spring, useNativeDriver: true }),
+        Animated.timing(a.opacity, { toValue: 1, duration: 380, delay: 820 + i * 75, easing: ease,   useNativeDriver: true }),
+        Animated.timing(a.y,       { toValue: 0, duration: 380, delay: 820 + i * 75, easing: spring, useNativeDriver: true }),
       ])
     )
 
     // Tagline
     const tagline = Animated.parallel([
-      Animated.timing(taglineOpacity, { toValue: 1,  duration: 550, delay: 2000, easing: ease,   useNativeDriver: true }),
-      Animated.timing(taglineY,       { toValue: 0,  duration: 550, delay: 2000, easing: spring, useNativeDriver: true }),
+      Animated.timing(taglineOpacity, { toValue: 1,  duration: 450, delay: 1450, easing: ease,   useNativeDriver: true }),
+      Animated.timing(taglineY,       { toValue: 0,  duration: 450, delay: 1450, easing: spring, useNativeDriver: true }),
     ])
 
     // CTA & bottom
-    const cta    = Animated.timing(ctaOpacity,    { toValue: 1, duration: 500, delay: 2300, easing: ease, useNativeDriver: true })
-    const bottom = Animated.timing(bottomOpacity, { toValue: 1, duration: 500, delay: 2500, easing: ease, useNativeDriver: true })
+    const cta    = Animated.timing(ctaOpacity,    { toValue: 1, duration: 400, delay: 1700, easing: ease, useNativeDriver: true })
+    const bottom = Animated.timing(bottomOpacity, { toValue: 1, duration: 400, delay: 1850, easing: ease, useNativeDriver: true })
 
     // Exit
     const exit = Animated.timing(exitOpacity, {
-      toValue: 0, duration: 450, delay: 3500, easing: Easing.in(Easing.cubic), useNativeDriver: true,
+      toValue: 0, duration: 400, delay: 2600, easing: Easing.in(Easing.cubic), useNativeDriver: true,
     })
 
     Animated.parallel([
@@ -146,7 +146,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     ]).start(() => onFinish?.())
 
     // Start pulse after logo lands
-    setTimeout(() => pulse.start(), 1000)
+    setTimeout(() => pulse.start(), 750)
     return () => pulse.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
