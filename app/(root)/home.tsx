@@ -23,6 +23,7 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
+import { COLORS, SHADOW, GRADIENT } from "@/constants/theme"
 import PostJobModal from "@/components/PostJobModal"
 
 const { width } = Dimensions.get("window")
@@ -145,13 +146,27 @@ const HomeScreen = () => {
           }}
         >
           {/* Avatar */}
-          <Image
-            source={{
-              uri: user?.imageUrl ||
-                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces",
+          <View
+            style={{
+              width:           50,
+              height:          50,
+              borderRadius:    25,
+              borderWidth:     2,
+              borderColor:     COLORS.primarySoft,
+              backgroundColor: COLORS.surface,
+              alignItems:      "center",
+              justifyContent:  "center",
+              ...SHADOW.card,
             }}
-            style={{ width: 46, height: 46, borderRadius: 23 }}
-          />
+          >
+            <Image
+              source={{
+                uri: user?.imageUrl ||
+                  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces",
+              }}
+              style={{ width: 46, height: 46, borderRadius: 23 }}
+            />
+          </View>
 
           {/* Greeting */}
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -230,11 +245,9 @@ const HomeScreen = () => {
         {/* ── Hero + Search ── */}
         <View
           style={{
-            backgroundColor:  "#ffffff",
             paddingHorizontal: SCREEN_PADDING.content,
+            paddingTop:        SPACING.xl,
             paddingBottom:     SPACING.lg,
-            borderBottomWidth:  0.5,
-            borderBottomColor: "#f0f0ee",
           }}
         >
           {/* Eyebrow */}
@@ -244,7 +257,7 @@ const HomeScreen = () => {
               fontWeight:    "500",
               letterSpacing: 3,
               textTransform: "uppercase",
-              color:         "#16a34a",
+              color:         COLORS.primary,
               marginBottom:   6,
               fontFamily:    "DMSans_500Medium",
             }}
@@ -256,42 +269,41 @@ const HomeScreen = () => {
           <Text
             style={{
               fontSize:      26,
-              color:         "#0f1f14",
+              color:         COLORS.textPrimary,
               lineHeight:    31,
               letterSpacing: -0.5,
-              marginBottom:  18,
+              marginBottom:  SPACING.xl,
               fontFamily:    "DMSerifDisplay_400Regular",
             }}
           >
             {"Find "}
-            <Text style={{ fontFamily: "DMSerifDisplay_400Regular_Italic", color: "#16a34a" }}>specialists</Text>
+            <Text style={{ fontFamily: "DMSerifDisplay_400Regular_Italic", color: COLORS.primary }}>specialists</Text>
             {"\nnear you."}
           </Text>
 
-          {/* Search input */}
+          {/* Search dock */}
           <View
             style={{
               flexDirection:    "row",
               alignItems:       "center",
-              backgroundColor:  "#f8f8f6",
-              borderRadius:     RADIUS.md,
-              borderWidth:      0.5,
-              borderColor:      "#e5e7eb",
-              paddingHorizontal: 14,
-              paddingVertical:   11,
+              backgroundColor:  COLORS.surface,
+              borderRadius:     RADIUS.lg,
+              paddingHorizontal: 16,
+              paddingVertical:   14,
               gap:               10,
+              ...SHADOW.card,
             }}
           >
-            <Ionicons name="search-outline" size={18} color="#9ca3af" />
+            <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
             <TextInput
               value={searchQuery}
               onChangeText={handleSearch}
               placeholder="Search for a specialist or service"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={COLORS.textMuted}
               style={{ flex: 1, fontSize: 13, color: "#374151", fontFamily: "DMSans_400Regular" }}
             />
             {isSearching && (
-              <Text style={{ fontSize: 10, color: "#9ca3af" }}>Searching…</Text>
+              <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Searching…</Text>
             )}
             {searchQuery.length > 0 && !isSearching && (
               <TouchableOpacity onPress={() => handleSearch("")}>
@@ -337,45 +349,64 @@ const HomeScreen = () => {
             })}
           </ScrollView>
 
-          {/* Search results */}
-          {searchQuery.length > 0 && searchResults.length > 0 && (
-            <View style={{ marginTop: 14 }}>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#0f1f14", marginBottom: 8, fontFamily: "DMSans_600SemiBold" }}>
-                {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} found
+          {/* Search results — labelled + divided so they read as a distinct state */}
+          {searchQuery.length > 0 && (searchResults.length > 0 || !isSearching) && (
+            <View style={{ marginTop: SPACING.md }}>
+              <Text
+                style={{
+                  fontSize:      10,
+                  fontWeight:    "600",
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  color:         COLORS.textMuted,
+                  marginBottom:   8,
+                  fontFamily:    "DMSans_600SemiBold",
+                }}
+              >
+                Results
               </Text>
-              {searchResults.map((job: any) => (
-                <View
-                  key={job.id}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    borderWidth:      0.5,
-                    borderColor:     "#efefed",
-                    borderRadius:    RADIUS.md,
-                    padding:          12,
-                    marginBottom:      8,
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
-                    {job.serviceType}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
-                    Budget: ${job.maxPrice} · {job.specialistChoice || "Any specialist"}
-                  </Text>
-                  {job.additionalInfo && (
-                    <Text numberOfLines={2} style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
-                      {job.additionalInfo}
-                    </Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
+              <View style={{ height: 1, backgroundColor: COLORS.border, marginBottom: SPACING.sm }} />
 
-          {searchQuery.length > 0 && !isSearching && searchResults.length === 0 && (
-            <View style={{ marginTop: 12, padding: 16, backgroundColor: "#f8f8f6", borderRadius: RADIUS.md, alignItems: "center" }}>
-              <Text style={{ fontSize: 13, color: "#9ca3af", fontFamily: "DMSans_400Regular" }}>
-                {`No jobs found for "${searchQuery}"`}
-              </Text>
+              {searchResults.length > 0 && (
+                <View>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#0f1f14", marginBottom: 8, fontFamily: "DMSans_600SemiBold" }}>
+                    {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} found
+                  </Text>
+                  {searchResults.map((job: any) => (
+                    <View
+                      key={job.id}
+                      style={{
+                        backgroundColor: COLORS.surface,
+                        borderWidth:      0.5,
+                        borderColor:     COLORS.borderSoft,
+                        borderRadius:    RADIUS.md,
+                        padding:          12,
+                        marginBottom:      8,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
+                        {job.serviceType}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
+                        Budget: ${job.maxPrice} · {job.specialistChoice || "Any specialist"}
+                      </Text>
+                      {job.additionalInfo && (
+                        <Text numberOfLines={2} style={{ fontSize: 11, color: "#6b7280", marginTop: 3, fontFamily: "DMSans_400Regular" }}>
+                          {job.additionalInfo}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {!isSearching && searchResults.length === 0 && (
+                <View style={{ padding: 16, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: "center" }}>
+                  <Text style={{ fontSize: 13, color: "#9ca3af", fontFamily: "DMSans_400Regular" }}>
+                    {`No jobs found for "${searchQuery}"`}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -433,6 +464,17 @@ const HomeScreen = () => {
                     source={{ uri: provider.image }}
                     style={{ width: "100%", height: "100%", resizeMode: "cover" }}
                   />
+                  {/* Bottom gradient scrim for legibility */}
+                  <LinearGradient
+                    colors={["transparent", "rgba(15, 23, 42, 0.38)"]}
+                    style={{
+                      position: "absolute",
+                      left:      0,
+                      right:     0,
+                      bottom:    0,
+                      height:   64,
+                    }}
+                  />
                   {/* Provider count chip */}
                   <View
                     style={{
@@ -460,8 +502,9 @@ const HomeScreen = () => {
                   <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
                     {provider.title}
                   </Text>
+                  {/* Count itself lives on the image chip above — label only here */}
                   <Text style={{ fontSize: 10.5, color: "#9ca3af", marginTop: 2, fontFamily: "DMSans_400Regular" }}>
-                    {provider.providerCount} providers available
+                    providers available
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -469,30 +512,14 @@ const HomeScreen = () => {
           </ScrollView>
         </View>
 
-        {/* ── How it works ── */}
-        <View
-          style={{
-            backgroundColor:  "#ffffff",
-            padding:           20,
-            borderBottomWidth:  0.5,
-            borderBottomColor: "#f0f0ee",
-          }}
-        >
+        {/* ── How it works — inline, no card chrome ── */}
+        <View style={{ paddingHorizontal: SCREEN_PADDING.content, paddingVertical: SPACING.lg }}>
           <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f1f14", marginBottom: 14, fontFamily: "DMSans_600SemiBold" }}>
             How it works
           </Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
+          <View style={{ flexDirection: "row", gap: SPACING.md }}>
             {/* Step 1 */}
-            <View
-              style={{
-                flex:            1,
-                backgroundColor: "#f8f8f6",
-                borderRadius:    16,
-                padding:          14,
-                borderWidth:      0.5,
-                borderColor:     "#efefed",
-              }}
-            >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
               <View
                 style={{
                   width:           36,
@@ -501,30 +528,22 @@ const HomeScreen = () => {
                   backgroundColor: "#eff6ff",
                   alignItems:      "center",
                   justifyContent:  "center",
-                  marginBottom:    10,
                 }}
               >
                 <Ionicons name="search" size={18} color="#2563eb" />
               </View>
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
-                Find a Pro
-              </Text>
-              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
-                Search verified professionals
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
+                  Find a Pro
+                </Text>
+                <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
+                  Search verified professionals
+                </Text>
+              </View>
             </View>
 
             {/* Step 2 */}
-            <View
-              style={{
-                flex:            1,
-                backgroundColor: "#f8f8f6",
-                borderRadius:    16,
-                padding:          14,
-                borderWidth:      0.5,
-                borderColor:     "#efefed",
-              }}
-            >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
               <View
                 style={{
                   width:           36,
@@ -533,103 +552,99 @@ const HomeScreen = () => {
                   backgroundColor: "#fffbeb",
                   alignItems:      "center",
                   justifyContent:  "center",
-                  marginBottom:    10,
                 }}
               >
                 <Ionicons name="star" size={18} color="#d97706" />
               </View>
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
-                Read Reviews
-              </Text>
-              <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
-                Real ratings from customers
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
+                  Read Reviews
+                </Text>
+                <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
+                  Real ratings from customers
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* ── Utility cards ── */}
-        <View style={{ paddingHorizontal: SCREEN_PADDING.content, paddingVertical: SPACING.md }}>
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-            {/* Feedback */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={{
-                flex:            1,
-                backgroundColor: "#ffffff",
-                borderRadius:    16,
-                padding:          14,
-                borderWidth:      0.5,
-                borderColor:     "#efefed",
-                minHeight:        90,
-              }}
-            >
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
-                How do you like the app?
-              </Text>
-              <View style={{ alignItems: "flex-end", marginTop: "auto", paddingTop: 10 }}>
-                <Ionicons name="clipboard-outline" size={28} color="#d1d5db" />
-              </View>
-            </TouchableOpacity>
-
-            {/* Support */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={{
-                flex:            1,
-                backgroundColor: "#ffffff",
-                borderRadius:    16,
-                padding:          14,
-                borderWidth:      0.5,
-                borderColor:     "#efefed",
-                minHeight:        90,
-              }}
-            >
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
-                Contact Support
-              </Text>
-              <View style={{ alignItems: "flex-end", marginTop: "auto", paddingTop: 10 }}>
-                <Ionicons name="mail-outline" size={28} color="#d1d5db" />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Specialist CTA */}
+        {/* ── Utility rows — low-emphasis list ── */}
+        <View style={{ paddingHorizontal: SCREEN_PADDING.content, paddingBottom: SPACING.md }}>
+          {/* Feedback */}
           <TouchableOpacity
-            activeOpacity={0.88}
+            activeOpacity={0.85}
             style={{
               flexDirection:   "row",
               alignItems:      "center",
-              justifyContent:  "space-between",
-              backgroundColor: "#ffffff",
-              borderRadius:    16,
-              padding:          16,
-              borderWidth:      0.5,
-              borderColor:     "#efefed",
               gap:              12,
+              paddingVertical:  SPACING.sm,
             }}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f1f14", fontFamily: "DMSans_600SemiBold" }}>
-                Are you a specialist?
-              </Text>
-              <Text style={{ fontSize: 11.5, color: "#9ca3af", marginTop: 3, lineHeight: 17, fontFamily: "DMSans_400Regular" }}>
-                Find clients and earn with QuickHands
-              </Text>
-            </View>
-            {/* Arrow badge */}
-            <View
+            <Ionicons name="clipboard-outline" size={18} color={COLORS.textMuted} />
+            <Text style={{ flex: 1, fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
+              How do you like the app?
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 1, backgroundColor: COLORS.borderSoft }} />
+
+          {/* Support */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={{
+              flexDirection:   "row",
+              alignItems:      "center",
+              gap:              12,
+              paddingVertical:  SPACING.sm,
+            }}
+          >
+            <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} />
+            <Text style={{ flex: 1, fontSize: 12.5, fontWeight: "600", color: "#0f1f14", lineHeight: 18, fontFamily: "DMSans_600SemiBold" }}>
+              Contact Support
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Specialist CTA — promoted to primary gradient card ── */}
+        <View style={{ paddingHorizontal: SCREEN_PADDING.content, paddingBottom: SPACING.md }}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={{ borderRadius: RADIUS.lg, overflow: "hidden", ...SHADOW.raised }}
+          >
+            <LinearGradient
+              colors={GRADIENT.brand}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
               style={{
-                width:           34,
-                height:          34,
-                borderRadius:    11,
-                backgroundColor: "#f4f4f2",
-                alignItems:      "center",
-                justifyContent:  "center",
+                flexDirection:  "row",
+                alignItems:     "center",
+                justifyContent: "space-between",
+                padding:         SPACING.lg,
+                gap:             12,
               }}
             >
-              <Ionicons name="arrow-forward" size={16} color="#9ca3af" />
-            </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#ffffff", fontFamily: "DMSans_600SemiBold" }}>
+                  Are you a specialist?
+                </Text>
+                <Text style={{ fontSize: 11.5, color: "rgba(255,255,255,0.75)", marginTop: 3, lineHeight: 17, fontFamily: "DMSans_400Regular" }}>
+                  Find clients and earn with QuickHands
+                </Text>
+              </View>
+              {/* Arrow badge */}
+              <View
+                style={{
+                  width:           34,
+                  height:          34,
+                  borderRadius:    17,
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  alignItems:      "center",
+                  justifyContent:  "center",
+                }}
+              >
+                <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 

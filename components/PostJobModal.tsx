@@ -463,6 +463,10 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     if (!s || !e) { Alert.alert("Invalid dates", "Please pick both dates from the calendar."); return }
     if (s < today) { Alert.alert("Past start date", "Choose today or a future start date."); return }
     if (e < s) { Alert.alert("Invalid end date", "End date must be on or after start date."); return }
+    if (uploadingCount > 0) {
+      Alert.alert("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
+      return
+    }
     submittingRef.current = true
     try {
       setLoading(true)
@@ -517,7 +521,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       setLoading(false)
       submittingRef.current = false
     }
-  }, [formData, getToken, user, isLoaded, isSignedIn, taskLocation])
+  }, [formData, getToken, user, isLoaded, isSignedIn, taskLocation, uploadingCount])
 
   const locationDetected = !taskLocation.loading && !!taskLocation.label
 
@@ -808,7 +812,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         <View style={st.footer}>
           <TouchableOpacity
             onPress={() => void handleSubmit()}
-            disabled={loading}
+            disabled={loading || uploadingCount > 0}
             activeOpacity={0.85}
             style={st.submitBtn}
           >
