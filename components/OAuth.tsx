@@ -1,11 +1,12 @@
 import { useState } from "react"
 import { useOAuth } from "@clerk/clerk-expo"
 import { router } from "expo-router"
-import { Alert, Image, Text, View } from "react-native"
+import { Image, Text, View } from "react-native"
 
 import CustomButton from "@/components/CustomButton"
 import { icons } from "@/constants"
 import { googleOAuth } from "@/lib/auth"
+import { showErrorToast } from "@/lib/toast"
 
 const OAuth = () => {
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" })
@@ -24,9 +25,9 @@ const OAuth = () => {
         return
       }
 
-      Alert.alert("Authentication failed", result.message)
+      showErrorToast("Authentication failed", result.message)
     } catch {
-      Alert.alert(
+      showErrorToast(
         "Something went wrong",
         "Please try again or check your connection."
       )

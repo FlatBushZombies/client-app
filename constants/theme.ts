@@ -16,6 +16,8 @@ export const COLORS = {
   textSecondary: "#64748B",
   textMuted: "#94A3B8",
   badgeRed: "#EF4444", // home.tsx notification badge
+  info: "#2563EB", // home.tsx "Find a Pro" icon chip
+  infoSoft: "#EFF6FF", // home.tsx "Find a Pro" icon chip background
 } as const
 
 export const SHADOW = {

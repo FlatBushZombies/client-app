@@ -4,6 +4,7 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { io, Socket } from "socket.io-client";
 import { API_BASE_URL, getApiUrl } from "@/lib/fetch";
 import { waitForClerkToken } from "@/lib/session";
+import { showErrorToast } from "@/lib/toast";
 
 type NotificationApplication = {
   id: number;
@@ -148,6 +149,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       hasLoadedRef.current = true;
     } catch (error) {
       console.error("[Notifications] Error fetching notifications", error);
+      showErrorToast("Couldn't load notifications", "Pull down to try again.");
     }
   }, [showInAppNotification, user?.id]);
 

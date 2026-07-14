@@ -8,6 +8,7 @@ import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
 import { ensureBackendUser } from "@/lib/userSync"
 import { SPACING } from "@/constants/layout"
+import { showErrorToast } from "@/lib/toast"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -23,6 +24,7 @@ export default function Index() {
         await ensureBackendUser(user)
       } catch (error) {
         console.error("Failed to sync client user:", error)
+        showErrorToast("Sync issue", "Your profile may be out of date — pull to refresh later.")
       }
 
       const completedOnboarding = user.unsafeMetadata?.completedOnboarding

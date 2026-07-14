@@ -25,6 +25,7 @@ import {
 import { router } from "expo-router"
 import { getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
+import { showErrorToast } from "@/lib/toast"
 
 // ─── Shadow tokens ─────────────────────────────────────────────────────────────
 const shadow = {
@@ -91,6 +92,7 @@ const Profile = () => {
         })
       } catch (error) {
         console.error("Error fetching profile stats:", error)
+        showErrorToast("Couldn't load your stats", "Pull down to try again.")
       } finally {
         setLoading(false)
       }

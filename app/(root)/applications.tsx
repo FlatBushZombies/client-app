@@ -6,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   RefreshControl,
   ScrollView,
@@ -19,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { SCREEN_PADDING } from "@/constants/layout"
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/lib/toast"
 
 type ApplicationStatus = "pending" | "accepted" | "rejected"
 
@@ -332,7 +332,7 @@ export default function ApplicationsScreen() {
         setExpandedContactId(data.data.id)
       }
     } catch (statusError) {
-      Alert.alert(
+      showErrorToast(
         "Unable to update application",
         statusError instanceof Error ? statusError.message : "Please try again."
       )
@@ -366,7 +366,7 @@ export default function ApplicationsScreen() {
         [application.id]: data.data.clientDecision?.privateNote || "",
       }))
     } catch (metaError) {
-      Alert.alert(
+      showErrorToast(
         "Unable to save changes",
         metaError instanceof Error ? metaError.message : "Please try again."
       )
@@ -379,7 +379,7 @@ export default function ApplicationsScreen() {
     const draft = contactDrafts[application.id]
 
     if (!draft?.phoneNumber?.trim()) {
-      Alert.alert("Phone number required", "Add the number the freelancer should use.")
+      showInfoToast("Phone number required", "Add the number the freelancer should use.")
       return
     }
 
@@ -403,9 +403,9 @@ export default function ApplicationsScreen() {
 
       mergeUpdatedApplication(data.data)
       setExpandedContactId(null)
-      Alert.alert("Direct contact unlocked", "The freelancer can now call you directly.")
+      showSuccessToast("Direct contact unlocked", "The freelancer can now call you directly.")
     } catch (contactError) {
-      Alert.alert(
+      showErrorToast(
         "Unable to share contact",
         contactError instanceof Error ? contactError.message : "Please try again."
       )
@@ -417,7 +417,7 @@ export default function ApplicationsScreen() {
   const submitReview = async (application: Application) => {
     const draft = reviewDrafts[application.id]
     if (!draft?.rating) {
-      Alert.alert("Rating required", "Choose a rating before saving the review.")
+      showInfoToast("Rating required", "Choose a rating before saving the review.")
       return
     }
 
@@ -439,10 +439,10 @@ export default function ApplicationsScreen() {
         throw new Error(data.message || "Failed to save review")
       }
 
-      Alert.alert("Review saved", "Your rating has been shared with the freelancer.")
+      showSuccessToast("Review saved", "Your rating has been shared with the freelancer.")
       await fetchApplications()
     } catch (reviewError) {
-      Alert.alert(
+      showErrorToast(
         "Unable to save review",
         reviewError instanceof Error ? reviewError.message : "Please try again."
       )
@@ -459,7 +459,7 @@ export default function ApplicationsScreen() {
     const target = `tel:${phoneNumber}`
     const supported = await Linking.canOpenURL(target)
     if (!supported) {
-      Alert.alert("Phone not supported", "This device cannot place phone calls directly.")
+      showErrorToast("Phone not supported", "This device cannot place phone calls directly.")
       return
     }
 

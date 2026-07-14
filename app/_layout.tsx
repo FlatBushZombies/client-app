@@ -28,6 +28,8 @@ import {
 } from "@expo-google-fonts/dm-serif-display";
 import { useEffect, useState } from "react";
 import CustomSplashScreen from "@/components/SplashScreen";
+import Toast from "react-native-toast-message";
+import { toastConfig } from "@/components/Toast";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -267,6 +269,7 @@ export default function RootLayout() {
         {/* App content renders behind the splash; revealed once it fades out */}
         <Stack screenOptions={{ headerShown: false }} />
         {splashAnimDone ? <InAppNotificationBanner /> : null}
+        <Toast config={toastConfig} />
 
         {/* Custom animated splash sits on top (z-[9999]) and fades itself out */}
         {!splashAnimDone && (

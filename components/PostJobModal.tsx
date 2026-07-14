@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Platform,
   Keyboard,
@@ -26,6 +25,7 @@ import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
 import { uploadToCloudinary } from "@/lib/cloudinaryUpload"
 import { COLORS, SHADOW } from "@/constants/theme"
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/lib/toast"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -243,7 +243,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       setAttachmentNames((names) => ({ ...names, [uploaded.url]: uploaded.name }))
       setFormData((p) => ({ ...p, documents: [...p.documents, uploaded.url] }))
     } catch (e) {
-      Alert.alert("Upload failed", e instanceof Error ? e.message : "Please try again.")
+      showErrorToast("Upload failed", e instanceof Error ? e.message : "Please try again.")
     } finally {
       setUploadingCount((n) => Math.max(0, n - 1))
     }
@@ -252,7 +252,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert("Permission needed", "Allow photo library access to attach photos.")
+      showInfoToast("Permission needed", "Allow photo library access to attach photos.")
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -379,8 +379,8 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
 
   const saveCurrentTemplate = useCallback(async () => {
     Keyboard.dismiss()
-    if (!user?.id) { Alert.alert("Sign in required", "Please sign in to save templates."); return }
-    if (!hasTemplateContent(formData)) { Alert.alert("Nothing to save", "Fill in at least one field first."); return }
+    if (!user?.id) { showInfoToast("Sign in required", "Please sign in to save templates."); return }
+    if (!hasTemplateContent(formData)) { showInfoToast("Nothing to save", "Fill in at least one field first."); return }
     const svcType = formData.serviceType.trim() || formData.selectedServices[0] || ""
     try {
       setSavingTemplate(true)
@@ -401,9 +401,9 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       setTemplates(updated)
       setTemplateName("")
       setShowSaveTemplate(false)
-      Alert.alert("Template saved", "You can reuse this setup any time.")
+      showSuccessToast("Template saved", "You can reuse this setup any time.")
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Please try again.")
+      showErrorToast("Error", e instanceof Error ? e.message : "Please try again.")
     } finally { setSavingTemplate(false) }
   }, [formData, templateName, user?.id])
 
@@ -430,13 +430,13 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const handleDateSelection = (date: Date) => {
     const norm = startOfDay(date)
     const today = startOfDay(new Date())
-    if (norm < today) { Alert.alert("Pick a future date", "Choose today or a future day."); return }
+    if (norm < today) { showInfoToast("Pick a future date", "Choose today or a future day."); return }
     if (activeDateField === "startDate") {
       const end = parseStoredDate(formData.endDate)
       update({ startDate: formatDateForApi(norm), endDate: end && end >= norm ? formData.endDate : formatDateForApi(norm) })
     } else if (activeDateField === "endDate") {
       const start = parseStoredDate(formData.startDate)
-      if (start && norm < start) { Alert.alert("Invalid end date", "Must be on or after the start date."); return }
+      if (start && norm < start) { showInfoToast("Invalid end date", "Must be on or after the start date."); return }
       update({ endDate: formatDateForApi(norm) })
     }
     setActiveDateField(null)
@@ -478,7 +478,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
 
   const handleNext = () => {
     if (currentStep === 3 && uploadingCount > 0) {
-      Alert.alert("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
+      showInfoToast("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
       return
     }
     if (!stepCanAdvance || currentStep >= TOTAL_STEPS - 1) return
@@ -506,18 +506,18 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     if (submittingRef.current) return
     Keyboard.dismiss()
     const svcType = formData.serviceType.trim() || formData.selectedServices[0] || ""
-    if (!isLoaded || !isSignedIn || !user) { Alert.alert("Sign in required", "Please sign in first."); return }
+    if (!isLoaded || !isSignedIn || !user) { showInfoToast("Sign in required", "Please sign in first."); return }
     if (!svcType || !formData.startDate || !formData.endDate || !formData.maxPrice) {
-      Alert.alert("Missing fields", "Please fill in service type, dates, and budget."); return
+      showInfoToast("Missing fields", "Please fill in service type, dates, and budget."); return
     }
     const s = parseStoredDate(formData.startDate)
     const e = parseStoredDate(formData.endDate)
     const today = startOfDay(new Date())
-    if (!s || !e) { Alert.alert("Invalid dates", "Please pick both dates from the calendar."); return }
-    if (s < today) { Alert.alert("Past start date", "Choose today or a future start date."); return }
-    if (e < s) { Alert.alert("Invalid end date", "End date must be on or after start date."); return }
+    if (!s || !e) { showInfoToast("Invalid dates", "Please pick both dates from the calendar."); return }
+    if (s < today) { showInfoToast("Past start date", "Choose today or a future start date."); return }
+    if (e < s) { showInfoToast("Invalid end date", "End date must be on or after start date."); return }
     if (uploadingCount > 0) {
-      Alert.alert("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
+      showInfoToast("Attachment uploading", "Please wait for your photo/document to finish uploading before posting.")
       return
     }
     submittingRef.current = true
@@ -550,7 +550,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       })
       if (res.status === 429 || res.status === 403) {
         const body = await res.json().catch(() => ({}))
-        Alert.alert("Slow down", body?.message || "Too many requests. Please wait a moment before trying again.")
+        showErrorToast("Slow down", body?.message || "Too many requests. Please wait a moment before trying again.")
         setLoading(false)
         submittingRef.current = false
         return
@@ -558,7 +558,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       const result = await res.json()
       if (res.status === 201 && result?.success) {
         const count = Number(result?.matchingSummary?.nearbyFreelancerCount) || 0
-        Alert.alert(
+        showSuccessToast(
           "Task posted",
           count > 0
             ? `${count} nearby specialist${count === 1 ? "" : "s"} notified in your area.`
@@ -566,10 +566,10 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         )
         handleClose()
       } else {
-        Alert.alert("Error", result?.message || "Request failed.")
+        showErrorToast("Error", result?.message || "Request failed.")
       }
     } catch {
-      Alert.alert("Network error", "Please try again.")
+      showErrorToast("Network error", "Please try again.")
     } finally {
       setLoading(false)
       submittingRef.current = false

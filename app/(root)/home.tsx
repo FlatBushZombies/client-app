@@ -25,6 +25,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
 import { COLORS, SHADOW, GRADIENT } from "@/constants/theme"
 import PostJobModal from "@/components/PostJobModal"
+import { showErrorToast } from "@/lib/toast"
 
 const { width } = Dimensions.get("window")
 const CARD_WIDTH = width * 0.415
@@ -109,7 +110,10 @@ const HomeScreen = () => {
       const res = await fetch(getApiUrl(`/api/jobs/search?q=${encodeURIComponent(query)}`))
       const data = await res.json()
       setSearchResults(data.success && Array.isArray(data.data) ? data.data : [])
-    } catch { setSearchResults([]) }
+    } catch {
+      showErrorToast("Search failed", "Please try again.")
+      setSearchResults([])
+    }
     finally { setIsSearching(false) }
   }
 
