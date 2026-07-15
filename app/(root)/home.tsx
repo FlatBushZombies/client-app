@@ -405,9 +405,25 @@ const HomeScreen = () => {
               )}
 
               {!isSearching && searchResults.length === 0 && (
-                <View style={{ padding: 16, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: "center" }}>
-                  <Text style={{ fontSize: 13, color: "#9ca3af", fontFamily: "DMSans_400Regular" }}>
-                    {`No jobs found for "${searchQuery}"`}
+                <View style={{ paddingVertical: 28, paddingHorizontal: 20, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, alignItems: "center", borderWidth: 0.5, borderColor: COLORS.borderSoft }}>
+                  <View
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 26,
+                      backgroundColor: "#f4f4f2",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Ionicons name="search-outline" size={22} color="#9ca3af" />
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f1f14", textAlign: "center", fontFamily: "DMSans_600SemiBold" }}>
+                    No specialists in this category
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#9ca3af", marginTop: 4, textAlign: "center", lineHeight: 17, fontFamily: "DMSans_400Regular" }}>
+                    {`We couldn't find a match for "${searchQuery}". Try a different service or check back soon.`}
                   </Text>
                 </View>
               )}

@@ -14,6 +14,7 @@ import { useUser } from "@clerk/clerk-expo"
 import Swiper from "react-native-swiper"
 import { Ionicons } from "@expo/vector-icons"
 import { SCREEN_PADDING, RADIUS, BUTTON } from "@/constants/layout"
+import { COLORS } from "@/constants/theme"
 
 const { width } = Dimensions.get("window")
 
@@ -23,7 +24,7 @@ const onboardingData = [
     icon: "search",
     title: "Find the Right\nSpecialist",
     description: "Browse through skilled professionals ready to help with your tasks. From cleaning to tech support, we've got you covered.",
-    color: "#15803D",
+    color: COLORS.primary,
     bgColor: "#DCFCE7",
   },
   {
@@ -118,7 +119,7 @@ const OnboardingScreen = () => {
           activeDot={
             <View
               style={{
-                backgroundColor: "#15803D",
+                backgroundColor: COLORS.primary,
                 width: 24,
                 height: 8,
                 borderRadius: 4,
@@ -210,14 +211,14 @@ const OnboardingScreen = () => {
             onPress={handleComplete}
             activeOpacity={0.85}
             style={{
-              backgroundColor: "#15803D",
+              backgroundColor: COLORS.primary,
               borderRadius: BUTTON.radius,
               paddingVertical: BUTTON.paddingVertical,
               paddingHorizontal: 24,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: "#15803D",
+              shadowColor: COLORS.primary,
               shadowOffset: { width: 0, height: 6 },
               shadowOpacity: 0.3,
               shadowRadius: 12,
@@ -253,7 +254,7 @@ const OnboardingScreen = () => {
                   width: 6,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: "#15803D",
+                  backgroundColor: COLORS.primary,
                   opacity: 0.4,
                   marginRight: 8,
                 }}

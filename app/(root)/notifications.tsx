@@ -4,8 +4,10 @@ import { useState } from "react"
 import { useSocket, type Notification } from "@/contexts/SocketContext"
 import { navigateForNotificationData } from "@/lib/pushNotifications"
 import { Ionicons } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import {
+  Platform,
   RefreshControl,
   SectionList,
   Text,
@@ -56,26 +58,26 @@ const NotificationsScreen = () => {
     const normalized = message.toLowerCase()
 
     if (normalized.includes("in your area")) {
-      return { name: "location" as const, color: "#15803D", bg: "#DCFCE7" }
+      return { name: "location" as const, gradient: ["#4ADE80", "#15803D"] as [string, string], glow: "#22C55E" }
     }
 
     if (normalized.includes("applied")) {
-      return { name: "person-add" as const, color: "#3B82F6", bg: "#DBEAFE" }
+      return { name: "person-add" as const, gradient: ["#60A5FA", "#1D4ED8"] as [string, string], glow: "#3B82F6" }
     }
 
     if (normalized.includes("accepted")) {
-      return { name: "checkmark-circle" as const, color: "#10B981", bg: "#D1FAE5" }
+      return { name: "checkmark-circle" as const, gradient: ["#34D399", "#047857"] as [string, string], glow: "#10B981" }
     }
 
     if (normalized.includes("rejected")) {
-      return { name: "close-circle" as const, color: "#EF4444", bg: "#FEE2E2" }
+      return { name: "close-circle" as const, gradient: ["#F87171", "#B91C1C"] as [string, string], glow: "#EF4444" }
     }
 
     if (normalized.includes("phone number") || normalized.includes("contact")) {
-      return { name: "call" as const, color: "#0EA5E9", bg: "#E0F2FE" }
+      return { name: "call" as const, gradient: ["#38BDF8", "#0369A1"] as [string, string], glow: "#0EA5E9" }
     }
 
-    return { name: "notifications" as const, color: "#6366F1", bg: "#E0E7FF" }
+    return { name: "notifications" as const, gradient: ["#A5B4FC", "#4338CA"] as [string, string], glow: "#6366F1" }
   }
 
   const getNotificationCopy = (message: string) => {
@@ -175,18 +177,19 @@ const NotificationsScreen = () => {
     return (
       <TouchableOpacity
         onPress={() => void handleNotificationPress(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
         style={{
-          backgroundColor: item.read ? COLORS.surface : COLORS.surfaceMuted,
+          backgroundColor: item.read ? COLORS.surface : "#FFFFFF",
           marginHorizontal: SCREEN_PADDING.content,
           marginBottom: SPACING.sm,
-          borderRadius: RADIUS.lg,
+          borderRadius: RADIUS.xl,
           padding: SPACING.md,
           ...SHADOW.card,
-          shadowOpacity: item.read ? 0.03 : 0.08,
-          elevation: item.read ? 1 : 3,
+          shadowOpacity: item.read ? 0.04 : 0.1,
+          shadowRadius: item.read ? 12 : 18,
+          elevation: item.read ? 1 : 4,
           borderWidth: 1,
-          borderColor: item.read ? COLORS.borderSoft : COLORS.border,
+          borderColor: item.read ? COLORS.borderSoft : "rgba(5,150,105,0.14)",
         }}
       >
         {!item.read && (
@@ -207,16 +210,37 @@ const NotificationsScreen = () => {
         <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
           <View
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: iconData.bg,
-              alignItems: "center",
-              justifyContent: "center",
+              width: 52,
+              height: 52,
+              borderRadius: RADIUS.md,
               marginRight: SPACING.sm,
+              ...Platform.select({
+                ios: {
+                  shadowColor: iconData.glow,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.32,
+                  shadowRadius: 10,
+                },
+                android: { elevation: 5 },
+              }),
             }}
           >
-            <Ionicons name={iconData.name} size={24} color={iconData.color} />
+            <LinearGradient
+              colors={iconData.gradient}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: RADIUS.md,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.35)",
+              }}
+            >
+              <Ionicons name={iconData.name} size={24} color="#FFFFFF" />
+            </LinearGradient>
           </View>
 
           <View style={{ flex: 1 }}>
@@ -311,14 +335,16 @@ const NotificationsScreen = () => {
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: SCREEN_PADDING.content,
-          paddingVertical: SPACING.md,
+          paddingTop: SPACING.sm,
+          paddingBottom: SPACING.md,
           backgroundColor: COLORS.surface,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
+          borderBottomColor: COLORS.borderSoft,
         }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
+          activeOpacity={0.75}
           style={{
             width: 40,
             height: 40,
@@ -334,10 +360,10 @@ const NotificationsScreen = () => {
         </TouchableOpacity>
 
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: COLORS.textPrimary, letterSpacing: -0.3 }}>
+          <Text style={{ fontSize: 19, fontWeight: "800", color: COLORS.textPrimary, letterSpacing: -0.4 }}>
             Notifications
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
             {connected && (
               <View
                 style={{
@@ -348,7 +374,7 @@ const NotificationsScreen = () => {
                 }}
               />
             )}
-            <Text style={{ fontSize: 12, color: connected ? COLORS.primary : COLORS.textSecondary }}>
+            <Text style={{ fontSize: 12, fontWeight: "500", color: connected ? COLORS.primary : COLORS.textSecondary }}>
               {unreadCount > 0 ? `${unreadCount} unread` : connected ? "Live updates on" : "Pull to refresh"}
             </Text>
           </View>
@@ -357,15 +383,18 @@ const NotificationsScreen = () => {
         <TouchableOpacity
           onPress={() => void markAllAsRead()}
           disabled={unreadCount === 0}
+          activeOpacity={0.75}
           style={{
-            opacity: unreadCount === 0 ? 0.5 : 1,
+            opacity: unreadCount === 0 ? 0.45 : 1,
             paddingHorizontal: SPACING.sm,
-            paddingVertical: 6,
+            paddingVertical: 8,
             borderRadius: RADIUS.pill,
             backgroundColor: COLORS.primarySoft,
+            borderWidth: 1,
+            borderColor: "rgba(5,150,105,0.16)",
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: "600", color: COLORS.primaryDark }}>Read all</Text>
+          <Text style={{ fontSize: 12.5, fontWeight: "700", color: COLORS.primaryDark }}>Read all</Text>
         </TouchableOpacity>
       </View>
 
@@ -373,20 +402,39 @@ const NotificationsScreen = () => {
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 40 }}>
           <View
             style={{
-              backgroundColor: COLORS.surfaceMuted,
-              borderWidth: 1,
-              borderColor: COLORS.borderSoft,
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              alignItems: "center",
-              justifyContent: "center",
+              width: 128,
+              height: 128,
+              borderRadius: 40,
               marginBottom: SPACING.xl,
+              ...Platform.select({
+                ios: {
+                  shadowColor: COLORS.primary,
+                  shadowOffset: { width: 0, height: 14 },
+                  shadowOpacity: 0.22,
+                  shadowRadius: 28,
+                },
+                android: { elevation: 8 },
+              }),
             }}
           >
-            <Ionicons name="notifications-outline" size={64} color={COLORS.textMuted} />
+            <LinearGradient
+              colors={["#ECFDF5", "#D1FAE5"]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={{
+                width: 128,
+                height: 128,
+                borderRadius: 40,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(5,150,105,0.14)",
+              }}
+            >
+              <Ionicons name="notifications-outline" size={56} color={COLORS.primary} />
+            </LinearGradient>
           </View>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: COLORS.textPrimary, marginBottom: SPACING.xs }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.textPrimary, marginBottom: SPACING.xs, letterSpacing: -0.4 }}>
             No notifications yet
           </Text>
           <Text

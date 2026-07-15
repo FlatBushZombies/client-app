@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { LinearGradient } from "expo-linear-gradient"
 import { useUser, useAuth } from "@clerk/clerk-expo"
 import {
   Briefcase,
@@ -23,16 +24,14 @@ import {
   CreditCard,
 } from "lucide-react-native"
 import { router } from "expo-router"
+import { COLORS, SHADOW } from "@/constants/theme"
 import { getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { showErrorToast } from "@/lib/toast"
 
 // ─── Shadow tokens ─────────────────────────────────────────────────────────────
 const shadow = {
-  card: Platform.select({
-    ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12 },
-    android: { elevation: 2 },
-  }),
+  card: SHADOW.card,
   hero: Platform.select({
     ios: { shadowColor: "#0f1f14", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.22, shadowRadius: 32 },
     android: { elevation: 12 },
@@ -113,8 +112,8 @@ const Profile = () => {
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4">
           <View>
             <View className="flex-row items-center gap-1.5 mb-1">
-              <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <Text className="text-emerald-600 text-[10px] font-bold tracking-[2.5px] uppercase">
+              <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+              <Text className="text-[10px] font-bold tracking-[2.5px] uppercase" style={{ color: COLORS.primary }}>
                 Account
               </Text>
             </View>
@@ -124,10 +123,10 @@ const Profile = () => {
           </View>
 
           <Pressable
-            className="w-10 h-10 rounded-xl bg-neutral-100 items-center justify-center"
+            className="w-11 h-11 rounded-2xl bg-neutral-100 border border-neutral-200/70 items-center justify-center"
             style={shadow.stat}
           >
-            <Settings size={17} color="#374151" strokeWidth={1.8} />
+            <Settings size={18} color="#374151" strokeWidth={1.8} />
           </Pressable>
         </View>
 
@@ -135,19 +134,24 @@ const Profile = () => {
         <View className="px-5 pb-2">
           <View
             className="rounded-[28px] overflow-hidden"
-            style={[{ backgroundColor: "#0C1A10" }, shadow.hero]}
+            style={shadow.hero}
+          >
+          <LinearGradient
+            colors={["#123420", "#0C1A10", "#060D08"]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.95, y: 1 }}
           >
             {/* Top shine */}
             <View className="absolute top-0 left-0 right-0 h-px bg-white/10" />
 
             {/* Decorative rings */}
             <View
-              className="absolute rounded-full border border-emerald-400/15"
-              style={{ width: 180, height: 180, top: -70, right: -60 }}
+              className="absolute rounded-full border"
+              style={{ width: 180, height: 180, top: -70, right: -60, borderColor: `${COLORS.primary}26` }}
             />
             <View
-              className="absolute rounded-full border border-emerald-400/10"
-              style={{ width: 100, height: 100, top: -20, right: -20 }}
+              className="absolute rounded-full border"
+              style={{ width: 100, height: 100, top: -20, right: -20, borderColor: `${COLORS.primary}1A` }}
             />
             <View
               className="absolute rounded-full border border-white/5"
@@ -159,31 +163,37 @@ const Profile = () => {
               <View className="flex-row items-center gap-4">
                 {/* Avatar */}
                 <View style={shadow.avatar}>
-                  <View className="w-[72px] h-[72px] rounded-[22px] overflow-hidden bg-emerald-950"
-                    style={{ borderWidth: 2, borderColor: "rgba(255,255,255,0.15)" }}
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.primaryDark]}
+                    className="w-[76px] h-[76px] rounded-[26px] items-center justify-center"
                   >
-                    <Image
-                      source={{ uri: user.imageUrl }}
-                      style={{ width: 72, height: 72 }}
-                      resizeMode="cover"
-                    />
-                  </View>
+                    <View className="w-[70px] h-[70px] rounded-[23px] overflow-hidden"
+                      style={{ borderWidth: 2, borderColor: "rgba(255,255,255,0.2)" }}
+                    >
+                      <Image
+                        source={{ uri: user.imageUrl }}
+                        style={{ width: 70, height: 70 }}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  </LinearGradient>
                   {/* Online dot */}
                   <View
-                    className="absolute bottom-0.5 right-0.5 w-[11px] h-[11px] rounded-full bg-emerald-400"
-                    style={{ borderWidth: 2, borderColor: "#0C1A10" }}
+                    className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full"
+                    style={{ backgroundColor: "#4ADE80", borderWidth: 2, borderColor: "#0C1A10" }}
                   />
                 </View>
 
                 {/* Name / email */}
                 <View className="flex-1">
-                  <Text className="text-white text-[20px] font-bold tracking-tight mb-2">
+                  <Text className="text-white text-[21px] font-bold tracking-tight mb-2" numberOfLines={1}>
                     {user.fullName || "Unnamed User"}
                   </Text>
                   <View
-                    className="self-start rounded-xl px-3 py-1.5"
+                    className="self-start flex-row items-center gap-1.5 rounded-xl px-3 py-1.5"
                     style={{ backgroundColor: "rgba(255,255,255,0.09)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}
                   >
+                    <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
                     <Text className="text-white/60 text-[11px] font-medium" numberOfLines={1}>
                       {user.primaryEmailAddress?.emailAddress}
                     </Text>
@@ -224,6 +234,7 @@ const Profile = () => {
                 </>
               )}
             </View>
+          </LinearGradient>
           </View>
         </View>
 
@@ -263,16 +274,16 @@ const Profile = () => {
               icon={Briefcase}
               title="My Tasks"
               subtitle="View, edit, and manage tasks"
-              accentLight="#f0fdf4"
-              accentIcon="#16a34a"
+              accentLight={COLORS.primarySoft}
+              accentIcon={COLORS.primary}
             />
             <View className="h-px bg-neutral-50 mx-4" />
             <MenuRow
               icon={CreditCard}
               title="Payments & Billing"
               subtitle="Spending history and invoices"
-              accentLight="#eff6ff"
-              accentIcon="#2563eb"
+              accentLight={COLORS.infoSoft}
+              accentIcon={COLORS.info}
             />
             <View className="h-px bg-neutral-50 mx-4" />
             <MenuRow

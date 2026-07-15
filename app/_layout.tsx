@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/Toast";
+import { COLORS } from "@/constants/theme";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -48,7 +49,7 @@ function getNotificationBannerCopy(message: string) {
     return {
       title: "In your area",
       body: message,
-      accent: "#15803D",
+      accent: COLORS.primaryDark,
       background: "#ECFDF5",
     };
   }
@@ -57,7 +58,7 @@ function getNotificationBannerCopy(message: string) {
     return {
       title: "Offer accepted",
       body: "Accepted and ready for direct contact.",
-      accent: "#10B981",
+      accent: COLORS.primary,
       background: "#ECFDF5",
     };
   }
@@ -66,7 +67,7 @@ function getNotificationBannerCopy(message: string) {
     return {
       title: "Offer accepted",
       body: "Your latest offer update is ready.",
-      accent: "#10B981",
+      accent: COLORS.primary,
       background: "#ECFDF5",
     };
   }

@@ -13,7 +13,9 @@ const getBgVariantStyle = (variant: ButtonProps["bgVariant"]) => {
     case "outline":
       return "bg-transparent border-neutral-300 border-[0.5px]";
     default:
-      return "bg-[#0286FF]";
+      // COLORS.primary (#059669) — NativeWind arbitrary classes must be
+      // static strings, so the token value is inlined here.
+      return "bg-[#059669]";
   }
 };
 

@@ -15,6 +15,7 @@ import {
   UserIcon as UserSolid,
 } from "react-native-heroicons/solid"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { COLORS, SHADOW } from "@/constants/theme"
 import { useSocket } from "@/contexts/SocketContext"
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
 
@@ -29,9 +30,9 @@ try {
   isLiquidGlassSupported = lg.isLiquidGlassSupported ?? false
 } catch {}
 
-const ACTIVE = "#16a34a"
-const INACTIVE = "#94a3b8"
-const BADGE_BG = "#ef4444"
+const ACTIVE = COLORS.primary
+const INACTIVE = COLORS.textMuted
+const BADGE_BG = COLORS.badgeRed
 const ICON_SIZE = 22
 
 type RouteConfig = {
@@ -137,19 +138,9 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   pill: {
-    borderRadius: 36,
+    borderRadius: 36, // capsule: ~half the bar's rendered height, keep as-is
     overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
+    ...SHADOW.raised,
   },
   pillFallback: {
     backgroundColor: Platform.OS === "ios"

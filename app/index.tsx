@@ -3,12 +3,14 @@
 import { useEffect } from "react"
 import { Text, View, TouchableOpacity, ActivityIndicator, Image } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
 import { ensureBackendUser } from "@/lib/userSync"
 import { SPACING } from "@/constants/layout"
 import { showErrorToast } from "@/lib/toast"
+import { COLORS, GRADIENT } from "@/constants/theme"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -54,10 +56,12 @@ export default function Index() {
   if (!isLoaded) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
-          <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
-        </View>
-        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: SPACING.xl }} />
+        <Image
+          source={IMAGES.logo}
+          style={{ width: 64, height: 64, borderRadius: 18 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
       </SafeAreaView>
     )
   }
@@ -65,10 +69,12 @@ export default function Index() {
   if (isSignedIn) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <View className="w-14 h-14 rounded-2xl bg-green-700 items-center justify-center shadow-lg">
-          <Text className="text-3xl font-black text-green-900 leading-9 font-jakarta-bold">Q</Text>
-        </View>
-        <ActivityIndicator size="small" color="#15803d" style={{ marginTop: SPACING.xl }} />
+        <Image
+          source={IMAGES.logo}
+          style={{ width: 64, height: 64, borderRadius: 18 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
         <Text className="mt-3 text-sm text-gray-400 tracking-wide font-jakarta">Redirecting…</Text>
       </SafeAreaView>
     )
@@ -97,7 +103,10 @@ export default function Index() {
         <View className="flex-1 justify-center items-start">
 
           {/* logo */}
-          <View className="rounded-3xl mb-5 shadow-lg">
+          <View
+            className="rounded-3xl mb-6"
+            style={{ shadowColor: "#0F172A", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.14, shadowRadius: 24, elevation: 8 }}
+          >
             <Image
               source={IMAGES.logo}
               className="w-22 h-22 rounded-3xl"
@@ -112,16 +121,20 @@ export default function Index() {
           </Text>
 
           {/* divider */}
-          <View className="w-8 h-0.5 rounded-sm bg-green-700 mb-6" />
+          <View className="w-9 h-1 rounded-full mb-7" style={{ backgroundColor: COLORS.primary }} />
 
           {/* headline */}
-          <Text className="text-[42px] font-extrabold text-gray-900 leading-[52px] tracking-tighter mb-4 font-jakarta-bold">
-            Find specialists{"\n"}to help with{"\n"}your task
+          <Text className="text-[46px] font-extrabold text-gray-900 leading-[50px] tracking-tighter mb-5 font-jakarta-bold">
+            Find{" "}
+            <Text style={{ fontFamily: "DMSerifDisplay_400Regular_Italic", color: COLORS.primary, fontSize: 46 }}>
+              specialists
+            </Text>
+            {"\nto help with\nyour task"}
           </Text>
 
           {/* subtitle */}
-          <Text className="text-base text-gray-500 leading-6 tracking-wide font-jakarta">
-            Connect with top-tier specialists{"\n"}to get the job done.
+          <Text className="text-base text-gray-500 leading-7 tracking-wide font-jakarta max-w-[280px]">
+            Connect with top-tier specialists to get the job done — fast, reliable, and nearby.
           </Text>
         </View>
 
@@ -130,21 +143,64 @@ export default function Index() {
 
           {/* primary CTA */}
           <TouchableOpacity
-            className="bg-green-700 rounded-[18px] py-[18px] pl-6 pr-[18px] flex-row items-center justify-between mb-4 shadow-lg"
             onPress={handleGetStarted}
             activeOpacity={0.88}
+            style={{
+              borderRadius: 20,
+              overflow: "hidden",
+              marginBottom: 16,
+              shadowColor: COLORS.primary,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+              elevation: 8,
+            }}
           >
-            <Text className="text-white text-sm font-bold tracking-wide flex-1 font-jakarta-bold">
-              {isSignedIn ? "Continue to Home" : "I want to look for services"}
-            </Text>
-            <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center ml-3">
-              <Text className="text-white text-base">→</Text>
-            </View>
+            <LinearGradient
+              colors={GRADIENT.brand}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                minHeight: 64,
+                paddingVertical: 20,
+                paddingLeft: 24,
+                paddingRight: 18,
+              }}
+            >
+              <Text
+                style={{
+                  flex: 1,
+                  color: "#FFFFFF",
+                  fontSize: 14,
+                  fontWeight: "700",
+                  letterSpacing: 0.3,
+                  fontFamily: "PlusJakartaSans_700Bold",
+                }}
+              >
+                {isSignedIn ? "Continue to Home" : "I want to look for services"}
+              </Text>
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginLeft: 12,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 16 }}>→</Text>
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
 
           {/* secondary CTA */}
           <TouchableOpacity
-            className="py-4 items-center border-[1.5px] border-gray-200 rounded-[18px] mb-6"
+            className="py-4 items-center border-[1.5px] border-gray-200 rounded-[20px] mb-7 bg-gray-50/60"
             onPress={handleBrowseServices}
             activeOpacity={0.65}
           >
@@ -155,7 +211,7 @@ export default function Index() {
 
           {/* trust indicator */}
           <View className="flex-row items-center justify-center gap-2">
-            <View className="w-1.5 h-1.5 rounded-full bg-green-700 opacity-40" />
+            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.primary, opacity: 0.5 }} />
             <Text className="text-xs text-gray-400 tracking-wide font-jakarta">
               Access top-tier specialists
             </Text>

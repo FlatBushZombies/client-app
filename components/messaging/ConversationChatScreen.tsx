@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,9 +12,11 @@ import {
 } from "react-native";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { API_BASE_URL } from "@/lib/fetch";
 import { useMessagingSocket, type ServerMessage } from "@/hooks/useMessagingSocket";
 import { SPACING, RADIUS } from "@/constants/layout";
+import { COLORS, SHADOW } from "@/constants/theme";
 
 const CLIENT_TAGS = [
   { kind: "ready-for-visit", label: "Ready for visit", icon: "home-outline" as const },
@@ -87,7 +90,6 @@ export function ConversationChatScreen({
   clerkUserId,
   conversationId,
   otherDisplayName,
-  jobTitle,
 }: Props) {
   const { getToken } = useAuth();
   const [messageText, setMessageText] = useState("");
@@ -126,11 +128,6 @@ export function ConversationChatScreen({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{otherDisplayName || "Chat"}</Text>
-        {jobTitle ? <Text style={styles.subtitle}>{jobTitle}</Text> : null}
-      </View>
-
       {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
 
       <FlatList
@@ -144,7 +141,7 @@ export function ConversationChatScreen({
           if (card?.kind === "application-submitted") {
             return (
               <View style={styles.systemPill}>
-                <Ionicons name="briefcase-outline" size={13} color="#64748B" />
+                <Ionicons name="briefcase-outline" size={13} color={COLORS.textSecondary} />
                 <Text style={styles.systemPillText}>
                   {"New Application · "}
                   {isMine ? "You applied for this job." : `${item.senderName || "A freelancer"} applied for this job.`}
@@ -184,41 +181,50 @@ export function ConversationChatScreen({
                   </View>
                 ) : null}
 
-                <View
-                  style={[
-                    styles.bubble,
-                    isMine ? styles.bubbleMine : styles.bubbleOther,
-                    isPlainMessage ? null : styles.bubbleTag,
-                  ]}
-                >
-                  {isPlainMessage ? (
-                    <Text style={[styles.bubbleText, isMine ? styles.bubbleTextMine : null]}>
-                      {card?.label ?? item.text}
-                    </Text>
-                  ) : (
-                    <View>
-                      <View style={styles.tagRow}>
-                        <Ionicons
-                          name={kindIcon(card!.kind)}
-                          size={14}
-                          color={isMine ? "#FFFFFF" : "#1D4ED8"}
-                        />
-                        <Text
-                          style={[styles.tagLabel, isMine ? styles.bubbleTextMine : null]}
-                        >
-                          {card!.label}
+                {(() => {
+                  const BubbleContainer = isMine ? LinearGradient : View;
+                  const bubbleProps = isMine
+                    ? { colors: ["#0F766E", "#052E23"] as [string, string], start: { x: 0.1, y: 0 }, end: { x: 0.95, y: 1 } }
+                    : {};
+                  return (
+                    <BubbleContainer
+                      {...(bubbleProps as any)}
+                      style={[
+                        styles.bubble,
+                        isMine ? styles.bubbleMine : styles.bubbleOther,
+                        isPlainMessage ? null : styles.bubbleTag,
+                      ]}
+                    >
+                      {isPlainMessage ? (
+                        <Text style={[styles.bubbleText, isMine ? styles.bubbleTextMine : null]}>
+                          {card?.label ?? item.text}
                         </Text>
-                      </View>
-                      {card?.note ? (
-                        <Text
-                          style={[styles.tagNote, isMine ? styles.bubbleTextMine : null]}
-                        >
-                          {card.note}
-                        </Text>
-                      ) : null}
-                    </View>
-                  )}
-                </View>
+                      ) : (
+                        <View>
+                          <View style={styles.tagRow}>
+                            <Ionicons
+                              name={kindIcon(card!.kind)}
+                              size={14}
+                              color={isMine ? COLORS.surface : COLORS.info}
+                            />
+                            <Text
+                              style={[styles.tagLabel, isMine ? styles.bubbleTextMine : null]}
+                            >
+                              {card!.label}
+                            </Text>
+                          </View>
+                          {card?.note ? (
+                            <Text
+                              style={[styles.tagNote, isMine ? styles.bubbleTextMine : null]}
+                            >
+                              {card.note}
+                            </Text>
+                          ) : null}
+                        </View>
+                      )}
+                    </BubbleContainer>
+                  );
+                })()}
               </View>
 
               {endsGroup ? (
@@ -254,7 +260,7 @@ export function ConversationChatScreen({
             style={styles.tagChip}
           >
             {sendingTag === tag.kind ? (
-              <ActivityIndicator size="small" color="#1D4ED8" />
+              <ActivityIndicator size="small" color={COLORS.info} />
             ) : (
               <>
                 <Ionicons name={tag.icon} size={14} color="#334155" />
@@ -270,19 +276,28 @@ export function ConversationChatScreen({
           value={messageText}
           onChangeText={setMessageText}
           placeholder="Type a message"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={COLORS.textMuted}
           multiline
           style={styles.input}
         />
-        <Pressable
-          onPress={sendChatMessage}
-          style={[styles.sendButton, !messageText.trim() ? styles.sendButtonDisabled : null]}
-          disabled={sending || !messageText.trim()}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+        <Pressable onPress={sendChatMessage} disabled={sending || !messageText.trim()}>
+          {messageText.trim() ? (
+            <LinearGradient
+              colors={["#059669", "#047857"]}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={styles.sendButton}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color={COLORS.surface} />
+              ) : (
+                <Ionicons name="arrow-up" size={19} color={COLORS.surface} />
+              )}
+            </LinearGradient>
           ) : (
-            <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+            <View style={[styles.sendButton, styles.sendButtonDisabled]}>
+              <Ionicons name="arrow-up" size={19} color="#94A3B8" />
+            </View>
           )}
         </Pressable>
       </View>
@@ -292,10 +307,7 @@ export function ConversationChatScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: SPACING.sm },
-  header: { marginBottom: SPACING.xs },
-  title: { fontSize: 22, fontWeight: "700", color: "#0F172A" },
-  subtitle: { fontSize: 13, color: "#475569", marginTop: 4 },
-  error: { color: "#DC2626", marginBottom: 10 },
+  error: { color: COLORS.badgeRed, marginBottom: 10 },
   timeline: { paddingBottom: SPACING.sm, flexGrow: 1 },
 
   systemPill: {
@@ -309,12 +321,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginVertical: 10,
   },
-  systemPillText: { fontSize: 12, color: "#64748B", fontWeight: "500" },
+  systemPillText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: "500" },
 
   senderName: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
     marginLeft: 40,
     marginBottom: 4,
   },
@@ -326,38 +338,55 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#DBEAFE",
+    backgroundColor: COLORS.info,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontSize: 10, fontWeight: "700", color: "#1D4ED8" },
+  avatarText: { fontSize: 10, fontWeight: "700", color: "#FFFFFF" },
 
-  bubble: { maxWidth: "76%", borderRadius: RADIUS.lg, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleMine: { backgroundColor: "#0F172A" },
-  bubbleOther: { backgroundColor: "#F1F5F9" },
-  bubbleTag: { borderWidth: 1, borderColor: "#E2E8F0" },
-  bubbleText: { fontSize: 15, lineHeight: 21, color: "#0F172A" },
-  bubbleTextMine: { color: "#FFFFFF" },
+  bubble: {
+    maxWidth: "76%",
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  bubbleMine: {
+    borderBottomRightRadius: 6,
+    ...Platform.select({
+      ios: { shadowColor: "#047857", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10 },
+      android: { elevation: 3 },
+    }),
+  },
+  bubbleOther: {
+    backgroundColor: "#F1F5F9",
+    borderBottomLeftRadius: 6,
+  },
+  bubbleTag: { borderWidth: 1, borderColor: COLORS.border },
+  bubbleText: { fontSize: 15, lineHeight: 21, color: COLORS.textPrimary },
+  bubbleTextMine: { color: COLORS.surface },
 
   tagRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tagLabel: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  tagLabel: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary },
   tagNote: { marginTop: 4, fontSize: 13, lineHeight: 18, color: "#475569" },
 
-  timestamp: { fontSize: 11, color: "#94A3B8", marginTop: 3 },
+  timestamp: { fontSize: 11, color: COLORS.textMuted, marginTop: 3 },
   timestampMine: { alignSelf: "flex-end", marginRight: 2 },
   timestampOther: { alignSelf: "flex-start", marginLeft: 40 },
 
-  empty: { textAlign: "center", color: "#64748B", marginTop: SPACING.xl, lineHeight: 20 },
+  empty: { textAlign: "center", color: COLORS.textSecondary, marginTop: SPACING.xl, lineHeight: 20 },
 
-  quickReplies: { flexGrow: 0, marginBottom: SPACING.xs },
+  quickReplies: { flexGrow: 0, marginBottom: SPACING.sm },
   tagChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs + 2,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    ...SHADOW.card,
   },
   tagChipText: { color: "#334155", fontWeight: "600", fontSize: 12 },
 
@@ -368,24 +397,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 42,
+    minHeight: 44,
     maxHeight: 110,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderColor: COLORS.borderSoft,
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    color: "#0F172A",
+    paddingVertical: 11,
+    color: COLORS.textPrimary,
     fontSize: 15,
+    ...SHADOW.card,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#0F172A",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    ...SHADOW.card,
   },
-  sendButtonDisabled: { backgroundColor: "#CBD5E1" },
+  sendButtonDisabled: { backgroundColor: "#E2E8F0" },
 });

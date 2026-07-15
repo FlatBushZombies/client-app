@@ -14,12 +14,59 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@clerk/clerk-expo";
 import { router, useLocalSearchParams } from "expo-router";
 import { ConversationChatScreen } from "@/components/messaging/ConversationChatScreen";
 import { useMessagingConversations } from "@/hooks/useMessagingConversations";
 import { API_BASE_URL } from "@/lib/fetch";
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout";
+import { COLORS, SHADOW } from "@/constants/theme";
+
+const AVATAR_GRADIENTS: [string, string][] = [
+  ["#34D399", "#047857"],
+  ["#60A5FA", "#1D4ED8"],
+  ["#FBBF24", "#B45309"],
+  ["#F472B6", "#BE185D"],
+  ["#A78BFA", "#5B21B6"],
+];
+
+function getInitials(name?: string | null) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function getAvatarGradient(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
+}
+
+function getMessagePreview(text: string | null) {
+  const normalized = String(text || "").trim();
+  if (!normalized.startsWith("QH_CARD::")) return normalized;
+  try {
+    const parsed = JSON.parse(normalized.slice("QH_CARD::".length));
+    return parsed?.label ? String(parsed.label) : normalized;
+  } catch {
+    return normalized;
+  }
+}
+
+function formatConversationTime(iso: string | null) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return date.toLocaleDateString([], { weekday: "short" });
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -90,7 +137,7 @@ function TeamQuickhandsCard() {
           <View style={styles.teamNameRow}>
             <Text style={styles.teamName}>Team Quickhands</Text>
             <View style={styles.officialBadge}>
-              <Ionicons name="shield-checkmark" size={9} color="#059669" />
+              <Ionicons name="shield-checkmark" size={9} color={COLORS.primary} />
               <Text style={styles.officialBadgeText}>Official</Text>
             </View>
           </View>
@@ -103,7 +150,7 @@ function TeamQuickhandsCard() {
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
           size={16}
-          color="#94A3B8"
+          color={COLORS.textMuted}
           style={{ marginLeft: 8 }}
         />
       </View>
@@ -119,7 +166,7 @@ function TeamQuickhandsCard() {
             {ONBOARDING_STEPS.map((step, i) => (
               <View key={i} style={styles.stepRow}>
                 <View style={styles.stepIconWrap}>
-                  <Ionicons name={step.icon} size={16} color="#059669" />
+                  <Ionicons name={step.icon} size={16} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.stepTitle}>
@@ -218,14 +265,25 @@ export default function ChatScreen() {
           <TouchableOpacity
             onPress={() => router.replace("/(root)/chat")}
             style={styles.backButton}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
             <Ionicons name="chevron-back" size={18} color="#334155" />
-            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
+
+          <View style={styles.threadAvatarWrap}>
+            <LinearGradient
+              colors={getAvatarGradient(otherDisplayName || conversationId)}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={styles.threadAvatar}
+            >
+              <Text style={styles.threadAvatarText}>{getInitials(otherDisplayName)}</Text>
+            </LinearGradient>
+          </View>
+
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Coordination Board</Text>
-            <Text style={styles.helper}>Simple status updates only</Text>
+            <Text style={styles.title}>{otherDisplayName || "Chat"}</Text>
+            <Text style={styles.helper} numberOfLines={1}>{jobTitle || "Active conversation"}</Text>
           </View>
         </View>
         <ConversationChatScreen
@@ -240,52 +298,94 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Coordination Boards</Text>
-      <Text style={styles.helper}>
-        Each board shows the latest status and the next action for a job.
-      </Text>
+      <View style={styles.listHeader}>
+        <View style={styles.eyebrowRow}>
+          <View style={styles.eyebrowDot} />
+          <Text style={styles.eyebrow}>Messages</Text>
+        </View>
+        <Text style={styles.pageTitle}>Chat</Text>
+        <Text style={styles.helper}>
+          Coordinate directly with specialists on your active tasks.
+        </Text>
+      </View>
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Filter by freelancer or job"
-        placeholderTextColor="#94A3B8"
-        style={styles.search}
-      />
+      <View style={styles.searchDock}>
+        <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search by specialist or job"
+          placeholderTextColor={COLORS.textMuted}
+          style={styles.search}
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => setQuery("")}>
+            <Ionicons name="close-circle" size={18} color="#CBD5E1" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {!isLoaded || !isSignedIn ? (
-        <Text style={styles.helper}>Sign in to view your boards.</Text>
+        <Text style={styles.helper}>Sign in to view your conversations.</Text>
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {loading ? (
-        <ActivityIndicator size="small" style={{ marginTop: SPACING.xl }} />
+        <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
       ) : (
         <FlatList
           data={filteredConversations}
           keyExtractor={(item) => item.conversationId}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: SPACING.xl }}
           ListHeaderComponent={<TeamQuickhandsCard />}
-          renderItem={({ item }) => (
-            <Pressable style={styles.row} onPress={() => openConversation(item)}>
-              <Text style={styles.name}>{item.otherUser?.displayName || "Coordination board"}</Text>
-              <Text style={styles.sub}>{item.jobTitle || "Open board"}</Text>
-              <Text style={styles.time}>
-                {item.lastMessageAt
-                  ? new Date(item.lastMessageAt).toLocaleDateString()
-                  : "No status yet"}
-              </Text>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const name = item.otherUser?.displayName || "Specialist";
+            return (
+              <Pressable
+                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                onPress={() => openConversation(item)}
+              >
+                <LinearGradient
+                  colors={getAvatarGradient(item.otherUser?.clerkId || item.conversationId)}
+                  start={{ x: 0.1, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={styles.rowAvatar}
+                >
+                  <Text style={styles.rowAvatarText}>{getInitials(name)}</Text>
+                </LinearGradient>
+
+                <View style={{ flex: 1 }}>
+                  <View style={styles.rowTopLine}>
+                    <Text style={styles.name} numberOfLines={1}>{name}</Text>
+                    <Text style={styles.time}>{formatConversationTime(item.lastMessageAt)}</Text>
+                  </View>
+                  <Text style={styles.sub} numberOfLines={1}>
+                    {getMessagePreview(item.lastMessageText) || item.jobTitle || "Open conversation"}
+                  </Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+              </Pressable>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="chatbubbles-outline" size={40} color="#94A3B8" />
+                <LinearGradient
+                  colors={["#ECFDF5", "#D1FAE5"]}
+                  start={{ x: 0.2, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={styles.emptyIconGradient}
+                >
+                  <Ionicons name="chatbubbles-outline" size={36} color={COLORS.primary} />
+                </LinearGradient>
               </View>
-              <Text style={styles.emptyTitle}>No boards yet</Text>
+              <Text style={styles.emptyTitle}>No conversations yet</Text>
               <Text style={styles.emptyText}>
-                Accept or apply to a job and the coordination board will appear here.
+                Accept or apply to a job and your chat with that specialist will appear here.
               </Text>
-              <TouchableOpacity onPress={() => refresh()} style={styles.refreshButton}>
+              <TouchableOpacity onPress={() => refresh()} style={styles.refreshButton} activeOpacity={0.85}>
                 <Text style={styles.refreshLabel}>Refresh</Text>
               </TouchableOpacity>
             </View>
@@ -300,134 +400,220 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: SCREEN_PADDING.content,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontSize: 17,
+    fontWeight: "800",
+    color: COLORS.textPrimary,
+    letterSpacing: -0.3,
   },
   helper: {
-    color: "#64748B",
+    color: COLORS.textSecondary,
     marginTop: 4,
     marginBottom: 12,
+  },
+  listHeader: {
+    marginBottom: SPACING.md,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  eyebrowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.primary,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    color: COLORS.primary,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: COLORS.textPrimary,
+    letterSpacing: -0.7,
+    marginBottom: 4,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   backButton: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  threadAvatarWrap: {
+    ...SHADOW.card,
+  },
+  threadAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  threadAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  searchDock: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingLeft: 8,
-    paddingRight: 12,
+    gap: 10,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  backButtonText: {
-    color: "#334155",
-    fontWeight: "600",
-    fontSize: 14,
+    borderColor: COLORS.borderSoft,
+    ...SHADOW.card,
   },
   search: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.sm,
-    color: "#0F172A",
+    flex: 1,
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    padding: 0,
   },
   row: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: RADIUS.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: SPACING.md,
+    borderColor: COLORS.borderSoft,
+    padding: SPACING.sm + 2,
     marginBottom: SPACING.xs,
+    ...SHADOW.card,
+  },
+  rowPressed: {
+    opacity: 0.7,
+  },
+  rowAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  rowAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  rowTopLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.xs,
+    marginBottom: 2,
   },
   name: {
-    fontSize: 16,
+    flexShrink: 1,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 4,
+    color: COLORS.textPrimary,
   },
   sub: {
     fontSize: 13,
-    color: "#475569",
+    color: "#64748B",
   },
   time: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#94A3B8",
+    fontSize: 11.5,
+    fontWeight: "500",
+    color: COLORS.textMuted,
   },
   error: {
-    color: "#DC2626",
+    color: COLORS.badgeRed,
     marginBottom: 12,
   },
   emptyCard: {
     marginTop: SPACING.xl,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xxl,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     padding: SPACING.xl,
     alignItems: "center",
+    ...SHADOW.card,
   },
   emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#F1F5F9",
+    width: 84,
+    height: 84,
+    borderRadius: 30,
+    marginBottom: SPACING.md,
+    ...SHADOW.card,
+  },
+  emptyIconGradient: {
+    width: 84,
+    height: 84,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: "rgba(5,150,105,0.14)",
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     marginBottom: SPACING.xs / 2,
   },
   emptyText: {
     fontSize: 13,
     lineHeight: 20,
     textAlign: "center",
-    color: "#64748B",
+    color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
   refreshButton: {
-    backgroundColor: "#0F172A",
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
+    backgroundColor: COLORS.textPrimary,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xs + 4,
   },
   refreshLabel: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontWeight: "700",
   },
 
   // ── Team Quickhands card ──────────────────────────────────────────────────────
   teamCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: "#D1FAE5",
     marginBottom: SPACING.sm,
     overflow: "hidden",
+    ...SHADOW.card,
   },
   teamHeader: {
     flexDirection: "row",
@@ -437,7 +623,7 @@ const styles = StyleSheet.create({
   teamAvatar: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     backgroundColor: "#064E3B",
     alignItems: "center",
     justifyContent: "center",
@@ -462,14 +648,14 @@ const styles = StyleSheet.create({
   teamName: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
   },
   officialBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#ECFDF5",
-    borderRadius: 10,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: RADIUS.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
@@ -478,12 +664,12 @@ const styles = StyleSheet.create({
   officialBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#059669",
+    color: COLORS.primary,
     letterSpacing: 0.2,
   },
   teamPreview: {
     fontSize: 13,
-    color: "#64748B",
+    color: COLORS.textSecondary,
   },
 
   // Onboarding body
@@ -512,8 +698,8 @@ const styles = StyleSheet.create({
   stepIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 10,
-    backgroundColor: "#ECFDF5",
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.primarySoft,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -522,27 +708,27 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
   stepBody: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#64748B",
+    color: COLORS.textSecondary,
   },
   tipsBox: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
+    backgroundColor: COLORS.surfaceMuted,
+    borderRadius: RADIUS.sm,
     padding: 12,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     gap: 6,
   },
   tipsHeading: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#94A3B8",
+    color: COLORS.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 4,
@@ -556,7 +742,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#059669",
+    backgroundColor: COLORS.primary,
     marginTop: 6,
     flexShrink: 0,
   },
@@ -568,11 +754,11 @@ const styles = StyleSheet.create({
   },
   supportLine: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: COLORS.textMuted,
     textAlign: "center",
   },
   supportEmail: {
-    color: "#059669",
+    color: COLORS.primary,
     fontWeight: "600",
   },
 });

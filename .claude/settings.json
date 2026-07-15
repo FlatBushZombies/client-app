@@ -7,7 +7,8 @@
       "Bash(npm install *)",
       "Bash(python -c \"import sys; lines = sys.stdin.readlines\\(\\); print\\(''.join\\(lines[-60:]\\)\\)\")",
       "Bash(grep -v \"sql\\\\`\")",
-      "Bash(grep -v \"//.*sql\\(\")"
+      "Bash(grep -v \"//.*sql\\(\")",
+      "Bash(echo \"TSC_EXIT:$?\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\gamerrdotcom\\Desktop\\quickhands\\src\\services",

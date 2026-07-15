@@ -17,7 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
-import { SCREEN_PADDING } from "@/constants/layout"
+import { RADIUS, SCREEN_PADDING, SPACING } from "@/constants/layout"
+import { COLORS, SHADOW } from "@/constants/theme"
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/lib/toast"
 
 type ApplicationStatus = "pending" | "accepted" | "rejected"
@@ -125,7 +126,7 @@ function formatRelativeDate(dateString: string) {
 
 function StatusPill({ status }: { status: ApplicationStatus }) {
   const config = {
-    accepted: { bg: "#DCFCE7", text: "#166534" },
+    accepted: { bg: COLORS.primarySoft, text: COLORS.primaryDark },
     pending: { bg: "#FEF3C7", text: "#92400E" },
     rejected: { bg: "#FEE2E2", text: "#B91C1C" },
   }[status]
@@ -139,17 +140,28 @@ function StatusPill({ status }: { status: ApplicationStatus }) {
   )
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: number; tone: string }) {
+function MetricCard({
+  label,
+  value,
+  tone,
+  icon,
+}: {
+  label: string
+  value: number
+  tone: string
+  icon: keyof typeof Ionicons.glyphMap
+}) {
   const colors =
     tone === "green"
-      ? { bg: "#ECFDF5", text: "#166534" }
+      ? { bg: COLORS.primarySoft, text: COLORS.primaryDark }
       : tone === "amber"
       ? { bg: "#FFFBEB", text: "#92400E" }
-      : { bg: "#EFF6FF", text: "#1D4ED8" }
+      : { bg: COLORS.infoSoft, text: COLORS.info }
 
   return (
-    <View className="flex-1 rounded-3xl p-4" style={{ backgroundColor: colors.bg }}>
-      <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+    <View className="flex-1 rounded-3xl p-4" style={[{ backgroundColor: colors.bg }, SHADOW.card]}>
+      <Ionicons name={icon} size={16} color={colors.text} />
+      <Text className="mt-2 text-3xl font-bold" style={{ color: colors.text }}>
         {value}
       </Text>
       <Text className="mt-1 text-xs font-semibold uppercase tracking-[1px]" style={{ color: colors.text }}>
@@ -173,7 +185,7 @@ function StarPicker({
           <Ionicons
             name={value <= rating ? "star" : "star-outline"}
             size={20}
-            color={value <= rating ? "#F59E0B" : "#CBD5E1"}
+            color={value <= rating ? "#F59E0B" : COLORS.textMuted}
           />
         </TouchableOpacity>
       ))}
@@ -194,9 +206,22 @@ export default function ApplicationsScreen() {
   const [sharingContactId, setSharingContactId] = useState<number | null>(null)
   const [savingMetaId, setSavingMetaId] = useState<number | null>(null)
   const [submittingReviewId, setSubmittingReviewId] = useState<number | null>(null)
+  const [expandedDetailIds, setExpandedDetailIds] = useState<Set<number>>(new Set())
   const [contactDrafts, setContactDrafts] = useState<Record<number, ContactDraft>>({})
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({})
   const [reviewDrafts, setReviewDrafts] = useState<Record<number, ReviewDraft>>({})
+
+  const toggleDetails = (applicationId: number) => {
+    setExpandedDetailIds((current) => {
+      const next = new Set(current)
+      if (next.has(applicationId)) {
+        next.delete(applicationId)
+      } else {
+        next.add(applicationId)
+      }
+      return next
+    })
+  }
 
   const mergeUpdatedApplication = (updatedApplication: Application) => {
     setJobs((currentJobs) =>
@@ -513,18 +538,18 @@ export default function ApplicationsScreen() {
               alignItems: "center",
               gap: 4,
               alignSelf: "flex-start",
-              marginBottom: 16,
-              backgroundColor: "#F1F5F9",
-              borderRadius: 20,
-              paddingVertical: 8,
-              paddingLeft: 8,
+              marginBottom: SPACING.md,
+              backgroundColor: COLORS.surfaceMuted,
+              borderRadius: RADIUS.lg,
+              paddingVertical: SPACING.xs,
+              paddingLeft: SPACING.xs,
               paddingRight: 14,
               borderWidth: 1,
-              borderColor: "#E2E8F0",
+              borderColor: COLORS.border,
             }}
           >
-            <Ionicons name="chevron-back" size={18} color="#334155" />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>Back</Text>
+            <Ionicons name="chevron-back" size={18} color={COLORS.textPrimary} />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: COLORS.textPrimary }}>Back</Text>
           </TouchableOpacity>
           <Text className="text-3xl font-bold text-slate-950">Applications</Text>
           <Text className="mt-2 text-sm leading-6 text-slate-500">
@@ -539,13 +564,13 @@ export default function ApplicationsScreen() {
         ) : null}
 
         <View className="mb-6 flex-row gap-3">
-          <MetricCard label="Shortlisted" value={shortlistedCount} tone="green" />
-          <MetricCard label="Accepted" value={acceptedCount} tone="blue" />
-          <MetricCard label="Pending" value={pendingCount} tone="amber" />
+          <MetricCard label="Shortlisted" value={shortlistedCount} tone="green" icon="bookmark-outline" />
+          <MetricCard label="Accepted" value={acceptedCount} tone="blue" icon="checkmark-circle-outline" />
+          <MetricCard label="Pending" value={pendingCount} tone="amber" icon="time-outline" />
         </View>
 
         {jobs.length === 0 ? (
-          <View className="items-center rounded-[28px] border border-slate-200 bg-white p-6">
+          <View className="items-center rounded-[28px] border border-slate-200 bg-white p-6" style={SHADOW.card}>
             <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-slate-100">
               <Ionicons name="briefcase-outline" size={32} color="#94A3B8" />
             </View>
@@ -560,7 +585,11 @@ export default function ApplicationsScreen() {
           const summary = job.applicationSummary || buildSummary(job.applications)
 
           return (
-            <View key={job.id} className="mb-6 rounded-[28px] bg-white p-5" style={{ borderWidth: 1, borderColor: "#E2E8F0" }}>
+            <View
+              key={job.id}
+              className="mb-6 rounded-[28px] bg-white p-5"
+              style={[{ borderWidth: 1, borderColor: COLORS.border }, SHADOW.card]}
+            >
               <View className="mb-4 flex-row items-start justify-between">
                 <View className="flex-1 pr-4">
                   <Text className="text-xl font-bold text-slate-950">{job.serviceType}</Text>
@@ -609,11 +638,18 @@ export default function ApplicationsScreen() {
                   }
                   const isPending = application.status === "pending"
                   const isAccepted = application.status === "accepted"
+                  const hasDetails = Boolean(
+                    application.applicationSpotlight?.summary ||
+                      application.quotation ||
+                      application.conditions
+                  )
+                  const detailsExpanded = expandedDetailIds.has(application.id)
 
                   return (
                     <View
                       key={application.id}
                       className="mb-4 rounded-[28px] border border-slate-200 bg-slate-50 p-4"
+                      style={SHADOW.card}
                     >
                       <View className="mb-3 flex-row items-start justify-between gap-3">
                         <View className="flex-1">
@@ -649,40 +685,62 @@ export default function ApplicationsScreen() {
                         ) : null}
                       </View>
 
-                      {application.applicationSpotlight?.summary ? (
-                        <View className="mb-3 rounded-2xl bg-white p-4">
-                          <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
-                            Why this stands out
+                      {hasDetails ? (
+                        <TouchableOpacity
+                          onPress={() => toggleDetails(application.id)}
+                          activeOpacity={0.7}
+                          className="mb-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3"
+                          style={SHADOW.card}
+                        >
+                          <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-500">
+                            {detailsExpanded ? "Hide details" : "View details"}
                           </Text>
-                          <Text className="mt-2 text-sm leading-6 text-slate-600">
-                            {application.applicationSpotlight.summary}
-                          </Text>
-                        </View>
+                          <Ionicons
+                            name={detailsExpanded ? "chevron-up" : "chevron-down"}
+                            size={16}
+                            color={COLORS.textSecondary}
+                          />
+                        </TouchableOpacity>
                       ) : null}
 
-                      {application.quotation ? (
-                        <View className="mb-3 rounded-2xl bg-emerald-50 p-4">
-                          <Text className="text-xs font-bold uppercase tracking-[1px] text-emerald-700">
-                            Quotation
-                          </Text>
-                          <Text className="mt-2 text-base font-bold text-emerald-900">
-                            {application.quotation}
-                          </Text>
-                        </View>
+                      {hasDetails && detailsExpanded ? (
+                        <>
+                          {application.applicationSpotlight?.summary ? (
+                            <View className="mb-3 rounded-2xl bg-white p-4" style={SHADOW.card}>
+                              <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
+                                Why this stands out
+                              </Text>
+                              <Text className="mt-2 text-sm leading-6 text-slate-600">
+                                {application.applicationSpotlight.summary}
+                              </Text>
+                            </View>
+                          ) : null}
+
+                          {application.quotation ? (
+                            <View className="mb-3 rounded-2xl bg-emerald-50 p-4" style={SHADOW.card}>
+                              <Text className="text-xs font-bold uppercase tracking-[1px] text-emerald-700">
+                                Quotation
+                              </Text>
+                              <Text className="mt-2 text-base font-bold text-emerald-900">
+                                {application.quotation}
+                              </Text>
+                            </View>
+                          ) : null}
+
+                          {application.conditions ? (
+                            <View className="mb-3 rounded-2xl bg-white p-4" style={SHADOW.card}>
+                              <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
+                                Conditions
+                              </Text>
+                              <Text className="mt-2 text-sm leading-6 text-slate-600">
+                                {application.conditions}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </>
                       ) : null}
 
-                      {application.conditions ? (
-                        <View className="mb-3 rounded-2xl bg-white p-4">
-                          <Text className="text-xs font-bold uppercase tracking-[1px] text-slate-400">
-                            Conditions
-                          </Text>
-                          <Text className="mt-2 text-sm leading-6 text-slate-600">
-                            {application.conditions}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <View className="mb-3 rounded-2xl bg-white p-4">
+                      <View className="mb-3 rounded-2xl bg-white p-4" style={SHADOW.card}>
                         <View className="mb-3 flex-row items-center justify-between">
                           <Text className="text-sm font-bold text-slate-900">Shortlist and notes</Text>
                           <TouchableOpacity
@@ -692,11 +750,16 @@ export default function ApplicationsScreen() {
                                 privateNote: noteDraft,
                               })
                             }
-                            className={`rounded-full px-3 py-2 ${
+                            className={`flex-row items-center gap-1.5 rounded-full px-3 py-2 ${
                               application.clientDecision?.shortlisted ? "bg-emerald-100" : "bg-slate-100"
                             }`}
                             disabled={savingMetaId === application.id}
                           >
+                            <Ionicons
+                              name={application.clientDecision?.shortlisted ? "bookmark" : "bookmark-outline"}
+                              size={14}
+                              color={application.clientDecision?.shortlisted ? COLORS.primaryDark : "#334155"}
+                            />
                             <Text
                               className={`text-xs font-bold ${
                                 application.clientDecision?.shortlisted ? "text-emerald-700" : "text-slate-700"
@@ -706,6 +769,11 @@ export default function ApplicationsScreen() {
                             </Text>
                           </TouchableOpacity>
                         </View>
+
+                        <View
+                          className="mb-3"
+                          style={{ height: 1, backgroundColor: COLORS.borderSoft }}
+                        />
 
                         <TextInput
                           value={noteDraft}
@@ -738,8 +806,9 @@ export default function ApplicationsScreen() {
                         </TouchableOpacity>
                       </View>
 
-                      {application.contactExchange?.readyForDirectContact ? (
-                        <View className="mb-3 rounded-2xl bg-emerald-50 p-4">
+                      {application.contactExchange?.readyForDirectContact &&
+                      expandedContactId !== application.id ? (
+                        <View className="mb-3 rounded-2xl bg-emerald-50 p-4" style={SHADOW.card}>
                           <Text className="text-sm font-bold text-emerald-800">
                             Direct contact unlocked
                           </Text>
@@ -755,14 +824,16 @@ export default function ApplicationsScreen() {
                           <View className="mt-3 flex-row gap-2">
                             <TouchableOpacity
                               onPress={() => setExpandedContactId(application.id)}
-                              className="rounded-full bg-white px-4 py-2.5"
+                              className="flex-row items-center gap-1.5 rounded-full bg-white px-4 py-2.5"
                             >
+                              <Ionicons name="create-outline" size={14} color={COLORS.primaryDark} />
                               <Text className="text-xs font-bold text-emerald-700">Update contact</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => openDialer(application.contactExchange?.phoneNumber)}
-                              className="rounded-full bg-emerald-700 px-4 py-2.5"
+                              className="flex-row items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2.5"
                             >
+                              <Ionicons name="call" size={14} color={COLORS.surface} />
                               <Text className="text-xs font-bold text-white">Call number</Text>
                             </TouchableOpacity>
                           </View>
@@ -770,7 +841,7 @@ export default function ApplicationsScreen() {
                       ) : null}
 
                       {expandedContactId === application.id ? (
-                        <View className="mb-3 rounded-2xl bg-amber-50 p-4">
+                        <View className="mb-3 rounded-2xl bg-amber-50 p-4" style={SHADOW.card}>
                           <Text className="text-sm font-bold text-amber-800">
                             Share contact details
                           </Text>
@@ -835,7 +906,7 @@ export default function ApplicationsScreen() {
                       ) : null}
 
                       {isAccepted ? (
-                        <View className="mb-3 rounded-2xl bg-white p-4">
+                        <View className="mb-3 rounded-2xl bg-white p-4" style={SHADOW.card}>
                           <Text className="text-sm font-bold text-slate-900">
                             Leave a review for this freelancer
                           </Text>
@@ -889,8 +960,9 @@ export default function ApplicationsScreen() {
                         {application.conversationId ? (
                           <TouchableOpacity
                             onPress={() => openCoordinationBoard(application, job)}
-                            className="rounded-full bg-slate-900 px-4 py-3"
+                            className="flex-row items-center gap-1.5 rounded-full bg-slate-900 px-4 py-3"
                           >
+                            <Ionicons name="chatbubbles-outline" size={14} color={COLORS.surface} />
                             <Text className="text-xs font-bold text-white">Open coordination board</Text>
                           </TouchableOpacity>
                         ) : null}
@@ -899,19 +971,29 @@ export default function ApplicationsScreen() {
                           <>
                             <TouchableOpacity
                               onPress={() => updateApplicationStatus(application, "accepted")}
-                              className="rounded-full bg-emerald-600 px-4 py-3"
+                              className="flex-row items-center gap-1.5 rounded-full px-4 py-3"
+                              style={{ backgroundColor: COLORS.primary }}
                               disabled={updatingStatus === application.id}
                             >
+                              <Ionicons name="checkmark-circle" size={16} color={COLORS.surface} />
                               <Text className="text-xs font-bold text-white">
                                 {updatingStatus === application.id ? "Updating..." : "Accept"}
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => updateApplicationStatus(application, "rejected")}
-                              className="rounded-full bg-rose-100 px-4 py-3"
+                              className="flex-row items-center gap-1.5 rounded-full px-4 py-3"
+                              style={{
+                                backgroundColor: COLORS.surface,
+                                borderWidth: 1,
+                                borderColor: COLORS.border,
+                              }}
                               disabled={updatingStatus === application.id}
                             >
-                              <Text className="text-xs font-bold text-rose-700">Reject</Text>
+                              <Ionicons name="close-circle" size={16} color={COLORS.badgeRed} />
+                              <Text className="text-xs font-bold" style={{ color: COLORS.badgeRed }}>
+                                Reject
+                              </Text>
                             </TouchableOpacity>
                           </>
                         ) : null}
@@ -922,8 +1004,9 @@ export default function ApplicationsScreen() {
                               ensureContactDraft(application)
                               setExpandedContactId(application.id)
                             }}
-                            className="rounded-full bg-amber-100 px-4 py-3"
+                            className="flex-row items-center gap-1.5 rounded-full bg-amber-100 px-4 py-3"
                           >
+                            <Ionicons name="call-outline" size={14} color="#B45309" />
                             <Text className="text-xs font-bold text-amber-700">Add phone number</Text>
                           </TouchableOpacity>
                         ) : null}
