@@ -9,6 +9,7 @@ export type ConversationSummary = {
   otherUser: {
     clerkId: string;
     displayName: string;
+    imageUrl?: string | null;
   } | null;
   lastMessageText: string | null;
   lastMessageAt: string | null;

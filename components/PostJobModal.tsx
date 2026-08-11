@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useUser, useAuth } from "@clerk/clerk-expo"
-import { getApiUrl } from "@/lib/fetch"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import * as Location from "expo-location"
 import * as SecureStore from "expo-secure-store"
@@ -196,6 +196,102 @@ function Divider() {
   return <View style={st.divider} />
 }
 
+function SuccessScreen({
+  serviceType,
+  matchedCount,
+  onPostAnother,
+  onDone,
+}: {
+  serviceType: string
+  matchedCount: number
+  onPostAnother: () => void
+  onDone: () => void
+}) {
+  const scaleAnim = useRef(new Animated.Value(0)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+    ]).start()
+  }, [])
+
+  return (
+    <Animated.View style={{ flex: 1, opacity: opacityAnim, alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <Animated.View
+        style={{
+          transform: [{ scale: scaleAnim }],
+          width: 96,
+          height: 96,
+          borderRadius: 48,
+          backgroundColor: COLORS.primarySoft,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 28,
+          ...SHADOW.raised,
+        }}
+      >
+        <Ionicons name="checkmark-circle" size={56} color={COLORS.primary} />
+      </Animated.View>
+
+      <Text style={{ fontSize: 26, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary, textAlign: "center", marginBottom: 8 }}>
+        Task Posted!
+      </Text>
+      <Text style={{ fontSize: 15, fontFamily: "PlusJakartaSans_500Medium", color: COLORS.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: 8 }}>
+        Your request for
+      </Text>
+      <View style={{ backgroundColor: COLORS.primarySoft, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, maxWidth: "100%" }}>
+        <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.primaryDark, textAlign: "center" }} numberOfLines={2}>
+          {serviceType}
+        </Text>
+      </View>
+
+      <View style={{ width: "100%", backgroundColor: COLORS.surfaceMuted, borderRadius: 16, padding: 16, marginBottom: 32, borderWidth: 1, borderColor: COLORS.border }}>
+        <Text style={{ fontSize: 13, fontFamily: "PlusJakartaSans_500Medium", color: COLORS.textSecondary, textAlign: "center", lineHeight: 20 }}>
+          {matchedCount > 0
+            ? `🔔 ${matchedCount} nearby specialist${matchedCount === 1 ? "" : "s"} notified. You'll be alerted here as they respond.`
+            : "🔔 Your task is live. Matching specialists will be notified as they become available."}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        onPress={onDone}
+        activeOpacity={0.85}
+        style={{
+          width: "100%",
+          backgroundColor: COLORS.primary,
+          borderRadius: 30,
+          paddingVertical: 16,
+          alignItems: "center",
+          marginBottom: 12,
+          ...Platform.select({
+            ios: { shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16 },
+            android: { elevation: 6 },
+          }),
+        }}
+      >
+        <Text style={{ color: "#FFFFFF", fontFamily: "PlusJakartaSans_700Bold", fontSize: 16 }}>Done</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={onPostAnother}
+        activeOpacity={0.7}
+        style={{
+          width: "100%",
+          borderWidth: 1.5,
+          borderColor: COLORS.border,
+          borderRadius: 30,
+          paddingVertical: 14,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: COLORS.textSecondary, fontFamily: "PlusJakartaSans_600SemiBold", fontSize: 15 }}>Post Another Task</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export interface PostJobModalProps {
@@ -208,6 +304,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const { getToken, isSignedIn } = useAuth()
 
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM)
+  const [successInfo, setSuccessInfo] = useState<{ serviceType: string; matchedCount: number } | null>(null)
   const [loading, setLoading] = useState(false)
   const submittingRef = useRef(false)
   const [templatesLoading, setTemplatesLoading] = useState(false)
@@ -494,6 +591,18 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const handleClose = () => {
     onClose()
     setFormData(EMPTY_FORM)
+    setSuccessInfo(null)
+    setShowSaveTemplate(false)
+    setTemplateName("")
+    setActiveDateField(null)
+    setCurrentStep(0)
+    stepFade.setValue(1)
+    stepAnimatingRef.current = false
+  }
+
+  const handlePostAnother = () => {
+    setFormData(EMPTY_FORM)
+    setSuccessInfo(null)
     setShowSaveTemplate(false)
     setTemplateName("")
     setActiveDateField(null)
@@ -525,12 +634,12 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       setLoading(true)
       const token = await waitForClerkToken(getToken)
       if (!token) throw new Error("Token missing")
-      const res = await fetch(getApiUrl("/api/jobs"), {
+      const res = await fetchWithRetry(getApiUrl("/api/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           serviceType: svcType,
-          selectedServices: formData.selectedServices,
+          selectedServices: formData.selectedServices.length > 0 ? formData.selectedServices : [svcType],
           startDate: formData.startDate,
           endDate: formData.endDate,
           maxPrice: Number(formData.maxPrice),
@@ -558,18 +667,14 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       const result = await res.json()
       if (res.status === 201 && result?.success) {
         const count = Number(result?.matchingSummary?.nearbyFreelancerCount) || 0
-        showSuccessToast(
-          "Task posted",
-          count > 0
-            ? `${count} nearby specialist${count === 1 ? "" : "s"} notified in your area.`
-            : "Your task is live. Matching specialists will be notified."
-        )
-        handleClose()
+        setSuccessInfo({ serviceType: svcType, matchedCount: count })
       } else {
         showErrorToast("Error", result?.message || "Request failed.")
       }
-    } catch {
-      showErrorToast("Network error", "Please try again.")
+    } catch (error) {
+      console.error("Post task error:", error)
+      const detail = error instanceof Error ? error.message : String(error)
+      showErrorToast("Network error", detail || "Please try again.")
     } finally {
       setLoading(false)
       submittingRef.current = false
@@ -611,7 +716,15 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={st.root}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-
+        {successInfo ? (
+          <SuccessScreen
+            serviceType={successInfo.serviceType}
+            matchedCount={successInfo.matchedCount}
+            onPostAnother={handlePostAnother}
+            onDone={handleClose}
+          />
+        ) : (
+        <>
         {/* ── Header ── */}
         <View style={st.header}>
           <TouchableOpacity onPress={handleClose} style={st.closeBtn} activeOpacity={0.7}>
@@ -1055,6 +1168,8 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
               </View>
             </View>
           </View>
+        )}
+        </>
         )}
 
       </KeyboardAvoidingView>

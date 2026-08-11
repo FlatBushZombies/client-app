@@ -18,6 +18,40 @@ export function getApiUrl(path: string) {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+/**
+ * The API's free-tier host spins down after inactivity — the first request
+ * after it's been idle can take 20-50s to wake it and sometimes drops
+ * outright. This wraps fetch with a timeout and a couple of retries so that
+ * scenario self-heals instead of surfacing as a hard error.
+ */
+export async function fetchWithRetry(
+  input: string,
+  init: RequestInit = {},
+  opts: { retries?: number; timeoutMs?: number; retryDelayMs?: number } = {}
+): Promise<Response> {
+  const { retries = 2, timeoutMs = 20000, retryDelayMs = 3000 } = opts
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+      const response = await fetch(input, { ...init, signal: controller.signal })
+      clearTimeout(timeoutId)
+      return response
+    } catch (error) {
+      clearTimeout(timeoutId)
+      lastError = error
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+      }
+    }
+  }
+
+  throw lastError
+}
+
 async function parseResponseBody(response: Response) {
   if (response.status === 204) {
     return null;

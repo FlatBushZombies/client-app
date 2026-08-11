@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -80,6 +81,7 @@ type ConversationRow = {
   otherUser: {
     clerkId: string;
     displayName: string;
+    imageUrl?: string | null;
   } | null;
 };
 
@@ -204,6 +206,7 @@ export default function ChatScreen() {
     conversationId?: string;
     otherClerkId?: string;
     otherDisplayName?: string;
+    otherAvatarUrl?: string;
     jobTitle?: string;
   }>();
 
@@ -211,6 +214,7 @@ export default function ChatScreen() {
 
   const conversationId = params.conversationId;
   const otherDisplayName = params.otherDisplayName;
+  const otherAvatarUrl = params.otherAvatarUrl || null;
   const jobTitle = params.jobTitle;
 
   const {
@@ -244,6 +248,7 @@ export default function ChatScreen() {
         conversationId: conversation.conversationId,
         otherClerkId: conversation.otherUser?.clerkId,
         otherDisplayName: conversation.otherUser?.displayName,
+        ...(conversation.otherUser?.imageUrl ? { otherAvatarUrl: conversation.otherUser.imageUrl } : {}),
         ...(conversation.jobTitle ? { jobTitle: conversation.jobTitle } : {}),
       },
     });
@@ -271,14 +276,18 @@ export default function ChatScreen() {
           </TouchableOpacity>
 
           <View style={styles.threadAvatarWrap}>
-            <LinearGradient
-              colors={getAvatarGradient(otherDisplayName || conversationId)}
-              start={{ x: 0.1, y: 0 }}
-              end={{ x: 0.9, y: 1 }}
-              style={styles.threadAvatar}
-            >
-              <Text style={styles.threadAvatarText}>{getInitials(otherDisplayName)}</Text>
-            </LinearGradient>
+            {otherAvatarUrl ? (
+              <Image source={{ uri: otherAvatarUrl }} style={styles.threadAvatar} />
+            ) : (
+              <LinearGradient
+                colors={getAvatarGradient(otherDisplayName || conversationId)}
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 0.9, y: 1 }}
+                style={styles.threadAvatar}
+              >
+                <Text style={styles.threadAvatarText}>{getInitials(otherDisplayName)}</Text>
+              </LinearGradient>
+            )}
           </View>
 
           <View style={{ flex: 1 }}>
@@ -290,6 +299,7 @@ export default function ChatScreen() {
           clerkUserId={userId}
           conversationId={conversationId}
           otherDisplayName={otherDisplayName}
+          otherAvatarUrl={otherAvatarUrl}
           jobTitle={jobTitle}
         />
       </SafeAreaView>
@@ -346,14 +356,18 @@ export default function ChatScreen() {
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
                 onPress={() => openConversation(item)}
               >
-                <LinearGradient
-                  colors={getAvatarGradient(item.otherUser?.clerkId || item.conversationId)}
-                  start={{ x: 0.1, y: 0 }}
-                  end={{ x: 0.9, y: 1 }}
-                  style={styles.rowAvatar}
-                >
-                  <Text style={styles.rowAvatarText}>{getInitials(name)}</Text>
-                </LinearGradient>
+                {item.otherUser?.imageUrl ? (
+                  <Image source={{ uri: item.otherUser.imageUrl }} style={styles.rowAvatar} />
+                ) : (
+                  <LinearGradient
+                    colors={getAvatarGradient(item.otherUser?.clerkId || item.conversationId)}
+                    start={{ x: 0.1, y: 0 }}
+                    end={{ x: 0.9, y: 1 }}
+                    style={styles.rowAvatar}
+                  >
+                    <Text style={styles.rowAvatarText}>{getInitials(name)}</Text>
+                  </LinearGradient>
+                )}
 
                 <View style={{ flex: 1 }}>
                   <View style={styles.rowTopLine}>

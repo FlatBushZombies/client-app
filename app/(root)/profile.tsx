@@ -22,6 +22,9 @@ import {
   Plus,
   ChevronRight,
   CreditCard,
+  Heart,
+  Search,
+  BarChart3,
 } from "lucide-react-native"
 import { router } from "expo-router"
 import { COLORS, SHADOW } from "@/constants/theme"
@@ -276,6 +279,34 @@ const Profile = () => {
               subtitle="View, edit, and manage tasks"
               accentLight={COLORS.primarySoft}
               accentIcon={COLORS.primary}
+              onPress={() => router.push("/(root)/applications")}
+            />
+            <View className="h-px bg-neutral-50 mx-4" />
+            <MenuRow
+              icon={Heart}
+              title="Favorites"
+              subtitle="Freelancers you'd rehire"
+              accentLight="#fee2e2"
+              accentIcon="#ef4444"
+              onPress={() => router.push("/(root)/favorites")}
+            />
+            <View className="h-px bg-neutral-50 mx-4" />
+            <MenuRow
+              icon={Search}
+              title="Saved Searches"
+              subtitle="Get notified about matching specialists"
+              accentLight="#ede9fe"
+              accentIcon="#7c3aed"
+              onPress={() => router.push("/(root)/saved-searches")}
+            />
+            <View className="h-px bg-neutral-50 mx-4" />
+            <MenuRow
+              icon={BarChart3}
+              title="Analytics"
+              subtitle="Jobs posted, spend, response time"
+              accentLight="#fef3c7"
+              accentIcon="#d97706"
+              onPress={() => router.push("/(root)/analytics")}
             />
             <View className="h-px bg-neutral-50 mx-4" />
             <MenuRow
@@ -357,6 +388,7 @@ const MenuRow = ({
   accentLight,
   accentIcon,
   last = false,
+  onPress,
 }: {
   icon: any
   title: string
@@ -364,8 +396,9 @@ const MenuRow = ({
   accentLight: string
   accentIcon: string
   last?: boolean
+  onPress?: () => void
 }) => (
-  <Pressable className="flex-row items-center px-4 py-[15px] gap-3.5">
+  <Pressable onPress={onPress} className="flex-row items-center px-4 py-[15px] gap-3.5">
     <View
       className="w-10 h-10 rounded-xl items-center justify-center"
       style={{ backgroundColor: accentLight, borderWidth: 1, borderColor: `${accentIcon}22` }}

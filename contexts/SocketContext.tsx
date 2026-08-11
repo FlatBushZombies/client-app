@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState } from "react-native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { io, Socket } from "socket.io-client";
-import { API_BASE_URL, getApiUrl } from "@/lib/fetch";
+import { API_BASE_URL, fetchWithRetry, getApiUrl } from "@/lib/fetch";
 import { waitForClerkToken } from "@/lib/session";
 import { showErrorToast } from "@/lib/toast";
 
@@ -124,7 +124,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await waitForClerkToken(getTokenRef.current);
-      const response = await fetch(getApiUrl(`/api/notifications/by-clerk/${user.id}`), {
+      const response = await fetchWithRetry(getApiUrl(`/api/notifications/by-clerk/${user.id}`), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await response.json();
@@ -149,7 +149,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       hasLoadedRef.current = true;
     } catch (error) {
       console.error("[Notifications] Error fetching notifications", error);
-      showErrorToast("Couldn't load notifications", "Pull down to try again.");
+      const detail = error instanceof Error ? error.message : String(error);
+      showErrorToast("Couldn't load notifications", detail || "Pull down to try again.");
     }
   }, [showInAppNotification, user?.id]);
 

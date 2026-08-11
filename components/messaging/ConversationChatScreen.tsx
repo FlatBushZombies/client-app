@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ type Props = {
   clerkUserId: string;
   conversationId: string;
   otherDisplayName?: string;
+  otherAvatarUrl?: string | null;
   jobTitle?: string;
 };
 
@@ -90,6 +92,7 @@ export function ConversationChatScreen({
   clerkUserId,
   conversationId,
   otherDisplayName,
+  otherAvatarUrl,
 }: Props) {
   const { getToken } = useAuth();
   const [messageText, setMessageText] = useState("");
@@ -172,11 +175,15 @@ export function ConversationChatScreen({
                 {!isMine ? (
                   <View style={styles.avatarSlot}>
                     {endsGroup ? (
-                      <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                          {getInitials(otherDisplayName || item.senderName)}
-                        </Text>
-                      </View>
+                      otherAvatarUrl ? (
+                        <Image source={{ uri: otherAvatarUrl }} style={styles.avatar} />
+                      ) : (
+                        <View style={styles.avatar}>
+                          <Text style={styles.avatarText}>
+                            {getInitials(otherDisplayName || item.senderName)}
+                          </Text>
+                        </View>
+                      )
                     ) : null}
                   </View>
                 ) : null}

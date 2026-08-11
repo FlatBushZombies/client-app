@@ -97,6 +97,7 @@ export async function registerDevicePushToken(
     body: JSON.stringify({
       token: expoPushToken,
       platform: Platform.OS,
+      appRole: "client",
     }),
   });
 

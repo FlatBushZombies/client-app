@@ -210,6 +210,9 @@ export default function Layout() {
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="applications" />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="favorites" options={{ href: null }} />
+      <Tabs.Screen name="saved-searches" options={{ href: null }} />
+      <Tabs.Screen name="analytics" options={{ href: null }} />
     </Tabs>
   )
 }

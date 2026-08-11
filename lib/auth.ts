@@ -1,7 +1,17 @@
 import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ensureBackendUser } from "@/lib/userSync";
+
+// SecureStore rejects (or silently mishandles) values above roughly 2048
+// bytes on some platforms. Clerk's cached client-state JWT can exceed that,
+// especially after Google OAuth — when that happened, saveToken's old
+// catch-and-swallow meant the session silently never persisted, so the app
+// looked signed-out on every restart despite the user having just signed
+// in. SecureStore is still tried first (and preferred) for every token;
+// this fallback only kicks in for the rare oversized value.
+const FALLBACK_PREFIX = "clerk_fallback_";
 
 export const tokenCache = {
   async getToken(key: string) {
@@ -9,21 +19,39 @@ export const tokenCache = {
       const item = await SecureStore.getItemAsync(key);
       if (item) {
         console.log(`${key} was used 🔐 \n`);
-      } else {
-        console.log("No values stored under key: " + key);
+        return item;
       }
-      return item;
     } catch (error) {
       console.error("SecureStore get item error: ", error);
-      await SecureStore.deleteItemAsync(key);
+    }
+
+    try {
+      const fallback = await AsyncStorage.getItem(FALLBACK_PREFIX + key);
+      if (fallback) console.log(`${key} was used (fallback storage) \n`);
+      return fallback;
+    } catch (fallbackError) {
+      console.error("AsyncStorage fallback get item error: ", fallbackError);
       return null;
     }
   },
   async saveToken(key: string, value: string) {
     try {
-      return SecureStore.setItemAsync(key, value);
-    } catch (err) {
+      await SecureStore.setItemAsync(key, value, {
+        keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+      });
+      await AsyncStorage.removeItem(FALLBACK_PREFIX + key).catch(() => {});
       return;
+    } catch (error) {
+      console.warn(
+        `SecureStore save failed for ${key} (likely exceeds the platform's value size limit) — falling back to AsyncStorage so the session still persists.`,
+        error
+      );
+    }
+
+    try {
+      await AsyncStorage.setItem(FALLBACK_PREFIX + key, value);
+    } catch (fallbackError) {
+      console.error("AsyncStorage fallback save error: ", fallbackError);
     }
   },
 };
