@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { useAuth } from "@clerk/clerk-expo"
 import { router } from "expo-router"
 import { Briefcase, CheckCircle2, ChevronLeft, Clock, DollarSign } from "lucide-react-native"
-import { getApiUrl } from "@/lib/fetch"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
 import { COLORS, SHADOW } from "@/constants/theme"
@@ -38,8 +38,8 @@ function StatCard({
         flex: 1,
         minWidth: "45%",
         backgroundColor: COLORS.surface,
-        borderRadius: RADIUS.lg,
-        padding: SPACING.md,
+        borderRadius: RADIUS.xl,
+        padding: SPACING.lg,
         ...SHADOW.card,
       }}
     >
@@ -47,7 +47,7 @@ function StatCard({
         style={{
           width: 36,
           height: 36,
-          borderRadius: 18,
+          borderRadius: RADIUS.pill,
           backgroundColor: iconBg,
           alignItems: "center",
           justifyContent: "center",
@@ -56,10 +56,10 @@ function StatCard({
       >
         <Icon size={17} color={iconColor} />
       </View>
-      <Text style={{ fontSize: 22, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
+      <Text style={{ fontSize: 24, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
         {value}
       </Text>
-      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>{label}</Text>
+      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 3 }}>{label}</Text>
     </View>
   )
 }
@@ -73,7 +73,7 @@ export default function AnalyticsScreen() {
   const fetchAnalytics = useCallback(async () => {
     try {
       const token = await waitForClerkToken(getToken)
-      const response = await fetch(getApiUrl("/api/user/me/analytics"), {
+      const response = await fetchWithRetry(getApiUrl("/api/user/me/analytics"), {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
@@ -110,8 +110,10 @@ export default function AnalyticsScreen() {
           style={{
             width: 36,
             height: 36,
-            borderRadius: 18,
+            borderRadius: RADIUS.pill,
             backgroundColor: COLORS.surface,
+            borderWidth: 1,
+            borderColor: COLORS.border,
             alignItems: "center",
             justifyContent: "center",
             ...SHADOW.card,
@@ -151,22 +153,22 @@ export default function AnalyticsScreen() {
             />
             <StatCard
               icon={CheckCircle2}
-              iconBg="#DBEAFE"
-              iconColor="#1D4ED8"
+              iconBg={COLORS.infoSoft}
+              iconColor={COLORS.info}
               label="Jobs completed"
               value={String(analytics?.completedJobsCount ?? 0)}
             />
             <StatCard
               icon={DollarSign}
-              iconBg="#FEF3C7"
-              iconColor="#D97706"
+              iconBg={COLORS.accentAmberSoft}
+              iconColor={COLORS.accentAmber}
               label="Committed spend"
               value={`$${(analytics?.totalCommittedSpend ?? 0).toLocaleString()}`}
             />
             <StatCard
               icon={Clock}
-              iconBg="#EDE9FE"
-              iconColor="#7C3AED"
+              iconBg={COLORS.accentPurpleSoft}
+              iconColor={COLORS.accentPurple}
               label="Avg. response time"
               value={
                 analytics?.averageResponseTimeHours != null
@@ -180,7 +182,7 @@ export default function AnalyticsScreen() {
             style={{
               marginTop: SPACING.md,
               backgroundColor: COLORS.surfaceMuted,
-              borderRadius: RADIUS.lg,
+              borderRadius: RADIUS.xl,
               padding: SPACING.md,
               borderWidth: 1,
               borderColor: COLORS.border,

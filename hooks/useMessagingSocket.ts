@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { waitForClerkToken } from "@/lib/session";
+import { fetchWithRetry } from "@/lib/fetch";
 
 export type ServerMessage = {
   id: string;
@@ -87,13 +88,14 @@ export function useMessagingSocket({
       }
 
       try {
-        const response = await fetch(
+        const response = await fetchWithRetry(
           `${baseApiUrl}/api/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
+          { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
         );
         const data = await response.json();
 
@@ -184,13 +186,14 @@ export function useMessagingSocket({
       }
 
       try {
-        const response = await fetch(
+        const response = await fetchWithRetry(
           `${baseApiUrl}/api/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
+          { retries: 0, timeoutMs: 6000 }
         );
         const data = await response.json();
 
@@ -235,7 +238,7 @@ export function useMessagingSocket({
       };
 
       const sendViaHttp = async () => {
-        const response = await fetch(
+        const response = await fetchWithRetry(
           `${baseApiUrl}/api/messaging/conversations/${encodeURIComponent(conversationId)}/messages`,
           {
             method: "POST",
@@ -244,7 +247,8 @@ export function useMessagingSocket({
               "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),
-          }
+          },
+          { retries: 1, timeoutMs: 10000, retryDelayMs: 2000 }
         );
         const data = await response.json();
 

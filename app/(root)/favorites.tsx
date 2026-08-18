@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   Text,
   TouchableOpacity,
@@ -12,8 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useAuth } from "@clerk/clerk-expo"
 import { router } from "expo-router"
-import { ChevronLeft, Heart, MessageCircle } from "lucide-react-native"
-import { getApiUrl } from "@/lib/fetch"
+import { ChevronLeft, Heart, Images, MessageCircle } from "lucide-react-native"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
 import { COLORS, SHADOW } from "@/constants/theme"
@@ -41,7 +42,7 @@ export default function FavoritesScreen() {
   const fetchFavorites = useCallback(async () => {
     try {
       const token = await waitForClerkToken(getToken)
-      const response = await fetch(getApiUrl("/api/user/me/favorites"), {
+      const response = await fetchWithRetry(getApiUrl("/api/user/me/favorites"), {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
@@ -164,8 +165,19 @@ export default function FavoritesScreen() {
           }
           ListEmptyComponent={
             <View style={{ alignItems: "center", paddingTop: 64, paddingHorizontal: 32 }}>
-              <Heart size={32} color={COLORS.textMuted} />
-              <Text style={{ marginTop: 12, fontSize: 15, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
+              <View
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 36,
+                  backgroundColor: COLORS.accentGreenSoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Heart size={28} color={COLORS.primary} />
+              </View>
+              <Text style={{ marginTop: SPACING.md, fontSize: 15, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
                 No favorites yet
               </Text>
               <Text style={{ marginTop: 4, fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 19 }}>
@@ -180,25 +192,38 @@ export default function FavoritesScreen() {
                 alignItems: "center",
                 gap: SPACING.sm,
                 backgroundColor: COLORS.surface,
-                borderRadius: RADIUS.lg,
-                padding: SPACING.sm,
+                borderRadius: RADIUS.xl,
+                padding: SPACING.md,
                 ...SHADOW.card,
               }}
             >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: COLORS.primarySoft,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontFamily: "PlusJakartaSans_700Bold", color: COLORS.primaryDark, fontSize: 15 }}>
-                  {item.displayName?.[0]?.toUpperCase() || "?"}
-                </Text>
-              </View>
+              {item.imageUrl ? (
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    borderWidth: 2,
+                    borderColor: COLORS.surfaceMuted,
+                  }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: COLORS.primarySoft,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontFamily: "PlusJakartaSans_700Bold", color: COLORS.primaryDark, fontSize: 15 }}>
+                    {item.displayName?.[0]?.toUpperCase() || "?"}
+                  </Text>
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }} numberOfLines={1}>
                   {item.displayName}
@@ -210,6 +235,24 @@ export default function FavoritesScreen() {
                     : ""}
                 </Text>
               </View>
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/(root)/specialist/[clerkId]",
+                    params: { clerkId: item.clerkId, displayName: item.displayName, imageUrl: item.imageUrl || undefined },
+                  })
+                }
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: COLORS.accentPurpleSoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Images size={16} color={COLORS.accentPurple} />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => openConversation(item.clerkId, item.displayName)}
                 disabled={messagingId === item.clerkId}
@@ -235,12 +278,12 @@ export default function FavoritesScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: "#FEE2E2",
+                  backgroundColor: "#FEE2E2", // no soft-red token in theme.ts yet — left as literal
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Heart size={16} color="#EF4444" fill="#EF4444" />
+                <Heart size={16} color={COLORS.badgeRed} fill={COLORS.badgeRed} />
               </TouchableOpacity>
             </View>
           )}

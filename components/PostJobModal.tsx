@@ -25,6 +25,7 @@ import * as ImagePicker from "expo-image-picker"
 import * as DocumentPicker from "expo-document-picker"
 import { uploadToCloudinary } from "@/lib/cloudinaryUpload"
 import { COLORS, SHADOW } from "@/constants/theme"
+import { RADIUS, SPACING } from "@/constants/layout"
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/lib/toast"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -157,6 +158,14 @@ const SPECIALIST_OPTIONS = [
   { key: "Most Affordable", desc: "Best value for your budget",      icon: "pricetag-outline" as const },
 ]
 
+// Rotating pastel icon-badge trio for option cards (visual variety only —
+// the active/selected state always overrides to the brand primary colors).
+const OPTION_ACCENTS = [
+  { soft: COLORS.accentGreenSoft, strong: COLORS.accentGreen },
+  { soft: COLORS.accentPurpleSoft, strong: COLORS.accentPurple },
+  { soft: COLORS.accentAmberSoft, strong: COLORS.accentAmber },
+]
+
 const EMPTY_FORM: FormData = {
   serviceType: "", selectedServices: [], startDate: "", endDate: "",
   maxPrice: "", specialistChoice: "", additionalInfo: "", documents: [],
@@ -241,13 +250,13 @@ function SuccessScreen({
       <Text style={{ fontSize: 15, fontFamily: "PlusJakartaSans_500Medium", color: COLORS.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: 8 }}>
         Your request for
       </Text>
-      <View style={{ backgroundColor: COLORS.primarySoft, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, maxWidth: "100%" }}>
+      <View style={{ backgroundColor: COLORS.primarySoft, borderRadius: RADIUS.lg, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, maxWidth: "100%" }}>
         <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.primaryDark, textAlign: "center" }} numberOfLines={2}>
           {serviceType}
         </Text>
       </View>
 
-      <View style={{ width: "100%", backgroundColor: COLORS.surfaceMuted, borderRadius: 16, padding: 16, marginBottom: 32, borderWidth: 1, borderColor: COLORS.border }}>
+      <View style={{ width: "100%", backgroundColor: COLORS.surfaceMuted, borderRadius: RADIUS.xl, padding: 16, marginBottom: 32, borderWidth: 1, borderColor: COLORS.border, ...SHADOW.card }}>
         <Text style={{ fontSize: 13, fontFamily: "PlusJakartaSans_500Medium", color: COLORS.textSecondary, textAlign: "center", lineHeight: 20 }}>
           {matchedCount > 0
             ? `🔔 ${matchedCount} nearby specialist${matchedCount === 1 ? "" : "s"} notified. You'll be alerted here as they respond.`
@@ -261,14 +270,13 @@ function SuccessScreen({
         style={{
           width: "100%",
           backgroundColor: COLORS.primary,
-          borderRadius: 30,
-          paddingVertical: 16,
+          borderRadius: RADIUS.pill,
+          paddingVertical: SPACING.md,
           alignItems: "center",
           marginBottom: 12,
-          ...Platform.select({
-            ios: { shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 16 },
-            android: { elevation: 6 },
-          }),
+          ...SHADOW.raised,
+          shadowColor: COLORS.primary,
+          shadowOpacity: 0.4,
         }}
       >
         <Text style={{ color: "#FFFFFF", fontFamily: "PlusJakartaSans_700Bold", fontSize: 16 }}>Done</Text>
@@ -281,7 +289,7 @@ function SuccessScreen({
           width: "100%",
           borderWidth: 1.5,
           borderColor: COLORS.border,
-          borderRadius: 30,
+          borderRadius: RADIUS.pill,
           paddingVertical: 14,
           alignItems: "center",
         }}
@@ -442,9 +450,19 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     }
   }, [syncUserLocation])
 
+  // Guarded on the visible-transition-to-true edge, not on [visible,
+  // loadTaskLocation] directly — loadTaskLocation is only as stable as
+  // Clerk's getToken reference, and if that isn't memoized across renders
+  // this would refire on every render while the modal is open (repeatedly
+  // hitting native location APIs + setState in a tight loop instead of once
+  // per open — a real crash/flicker risk on production builds).
+  const prevVisibleForLocationRef = useRef(false)
   useEffect(() => {
-    if (visible) void loadTaskLocation()
-  }, [visible, loadTaskLocation])
+    if (visible && !prevVisibleForLocationRef.current) {
+      void loadTaskLocation()
+    }
+    prevVisibleForLocationRef.current = visible
+  }, [visible])
 
   // ── Templates ─────────────────────────────────────────────────────────────
 
@@ -728,7 +746,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         {/* ── Header ── */}
         <View style={st.header}>
           <TouchableOpacity onPress={handleClose} style={st.closeBtn} activeOpacity={0.7}>
-            <Ionicons name="close" size={17} color="#334155" />
+            <Ionicons name="close" size={17} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={st.headerTitle}>Post a Task</Text>
           <View style={st.closeBtn} />
@@ -782,7 +800,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                 )}
 
                 <View style={st.section}>
-                  <Text style={st.sectionLabel}>What do you need?</Text>
+                  <Text style={st.stepTitle}>What do you need?</Text>
                   <FocusInput
                     placeholder="e.g. Fix a leaking pipe"
                     value={formData.serviceType}
@@ -811,7 +829,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
             {/* ── STEP 1 · WHEN ── */}
             {currentStep === 1 && (
               <View style={st.section}>
-                <Text style={st.sectionLabel}>When?</Text>
+                <Text style={st.stepTitle}>When?</Text>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity
                     onPress={() => openDatePicker("startDate")}
@@ -821,7 +839,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                     <Ionicons
                       name="calendar-outline"
                       size={15}
-                      color={formData.startDate ? COLORS.primary : "#CBD5E1"}
+                      color={formData.startDate ? COLORS.primary : COLORS.textMuted}
                       style={{ marginBottom: 6 }}
                     />
                     <Text style={st.dateBtnLabel}>Start</Text>
@@ -831,7 +849,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                   </TouchableOpacity>
 
                   <View style={st.dateArrow}>
-                    <Ionicons name="arrow-forward" size={14} color="#CBD5E1" />
+                    <Ionicons name="arrow-forward" size={14} color={COLORS.textMuted} />
                   </View>
 
                   <TouchableOpacity
@@ -842,7 +860,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                     <Ionicons
                       name="calendar-outline"
                       size={15}
-                      color={formData.endDate ? COLORS.primary : "#CBD5E1"}
+                      color={formData.endDate ? COLORS.primary : COLORS.textMuted}
                       style={{ marginBottom: 6 }}
                     />
                     <Text style={st.dateBtnLabel}>End</Text>
@@ -858,7 +876,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
             {currentStep === 2 && (
               <>
                 <View style={st.section}>
-                  <Text style={st.sectionLabel}>Max budget</Text>
+                  <Text style={st.stepTitle}>Max budget</Text>
                   <FocusInput
                     placeholder="0.00"
                     value={formData.maxPrice}
@@ -873,9 +891,10 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
 
                 <View style={st.section}>
                   <Text style={st.sectionLabel}>Specialist preference</Text>
-                  <View style={{ gap: 8 }}>
-                    {SPECIALIST_OPTIONS.map((opt) => {
+                  <View style={{ gap: 10 }}>
+                    {SPECIALIST_OPTIONS.map((opt, idx) => {
                       const active = formData.specialistChoice === opt.key
+                      const accent = OPTION_ACCENTS[idx % OPTION_ACCENTS.length]
                       return (
                         <TouchableOpacity
                           key={opt.key}
@@ -883,14 +902,20 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                           activeOpacity={0.8}
                           style={[st.optionRow, active && st.optionRowActive]}
                         >
-                          <View style={[st.optionIcon, active && st.optionIconActive]}>
-                            <Ionicons name={opt.icon} size={15} color={active ? COLORS.surface : COLORS.textMuted} />
+                          <View
+                            style={[
+                              st.optionIcon,
+                              { backgroundColor: accent.soft },
+                              active && st.optionIconActive,
+                            ]}
+                          >
+                            <Ionicons name={opt.icon} size={18} color={active ? COLORS.surface : accent.strong} />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[st.optionTitle, active && st.optionTitleActive]}>{opt.key}</Text>
                             <Text style={st.optionDesc}>{opt.desc}</Text>
                           </View>
-                          {active && <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />}
+                          {active && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
                         </TouchableOpacity>
                       )
                     })}
@@ -902,11 +927,11 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
             {/* ── STEP 3 · DETAILS & ATTACHMENTS ── */}
             {currentStep === 3 && (
               <View style={st.section}>
-                <Text style={st.sectionLabel}>Additional details</Text>
+                <Text style={st.stepTitle}>Additional details</Text>
                 <View style={st.textarea}>
                   <TextInput
                     placeholder="Share any requirements, timing constraints, or access notes…"
-                    placeholderTextColor="#CBD5E1"
+                    placeholderTextColor={COLORS.textMuted}
                     value={formData.additionalInfo}
                     onChangeText={(t) => update({ additionalInfo: t })}
                     multiline
@@ -914,23 +939,23 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                     textAlignVertical="top"
                   />
                 </View>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-                  <TouchableOpacity onPress={pickPhoto} style={st.attachButton}>
-                    <Ionicons name="image-outline" size={16} color="#334155" />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                  <TouchableOpacity onPress={pickPhoto} style={st.attachButton} activeOpacity={0.75}>
+                    <Ionicons name="image-outline" size={16} color={COLORS.textSecondary} />
                     <Text style={st.attachButtonText}>Add photo</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={pickDocument} style={st.attachButton}>
-                    <Ionicons name="document-attach-outline" size={16} color="#334155" />
+                  <TouchableOpacity onPress={pickDocument} style={st.attachButton} activeOpacity={0.75}>
+                    <Ionicons name="document-attach-outline" size={16} color={COLORS.textSecondary} />
                     <Text style={st.attachButtonText}>Add document</Text>
                   </TouchableOpacity>
-                  {uploadingCount > 0 ? <ActivityIndicator size="small" color="#334155" /> : null}
+                  {uploadingCount > 0 ? <ActivityIndicator size="small" color={COLORS.primary} /> : null}
                 </View>
 
                 {formData.documents.length > 0 ? (
                   <View style={{ marginTop: 10, gap: 8 }}>
                     {formData.documents.map((url) => (
                       <View key={url} style={st.attachmentChip}>
-                        <Ionicons name="document-outline" size={14} color="#475569" />
+                        <Ionicons name="document-outline" size={14} color={COLORS.textSecondary} />
                         <Text style={st.attachmentChipText} numberOfLines={1}>
                           {attachmentNames[url] || url.split("/").pop()}
                         </Text>
@@ -948,7 +973,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
             {currentStep === 4 && (
               <>
                 <View style={st.section}>
-                  <Text style={st.sectionLabel}>Review your task</Text>
+                  <Text style={st.stepTitle}>Review your task</Text>
 
                   <View style={st.reviewCard}>
                     {reviewRows.map((row, i) => (
@@ -1111,7 +1136,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
                   <Text style={st.calMonthTitle}>{monthLabel(calendarMonth)}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setActiveDateField(null)} style={st.calCloseBtn}>
-                  <Ionicons name="close" size={16} color="#334155" />
+                  <Ionicons name="close" size={16} color={COLORS.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -1187,25 +1212,31 @@ const st = StyleSheet.create({
   },
 
   attachButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 999,
+    backgroundColor: COLORS.background,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: COLORS.borderDashed,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm + 2,
   },
-  attachButtonText: { fontSize: 12, fontWeight: "600", color: "#334155" },
+  attachButtonText: { fontSize: 13, fontFamily: "PlusJakartaSans_600SemiBold", color: COLORS.textSecondary },
   attachmentChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
+    borderColor: COLORS.borderSoft,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    ...SHADOW.card,
   },
   attachmentChipText: { flex: 1, fontSize: 13, color: COLORS.textPrimary },
 
@@ -1218,13 +1249,13 @@ const st = StyleSheet.create({
     height: 56,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.borderSoft,
   },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1244,12 +1275,12 @@ const st = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.borderSoft,
   },
   progressSegment: {
     flex: 1,
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.border,
   },
   progressSegmentActive: {
@@ -1261,10 +1292,10 @@ const st = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 11,
+    paddingVertical: 13,
     backgroundColor: COLORS.surfaceMuted,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.borderSoft,
     gap: 9,
   },
   locationBannerDetected: {
@@ -1273,25 +1304,26 @@ const st = StyleSheet.create({
   },
   // Card variant used on the Review step
   locationBannerCard: {
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: SPACING.lg,
+    ...SHADOW.card,
   },
   locationBannerCardDetected: {
     borderColor: "#D1FAE5",
     borderBottomColor: "#D1FAE5",
   },
   locationDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     flexShrink: 0,
   },
   locationDotOn: { backgroundColor: COLORS.primary },
-  locationDotOff: { backgroundColor: "#CBD5E1" },
+  locationDotOff: { backgroundColor: COLORS.textMuted },
   locationText: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_500Medium",
@@ -1311,7 +1343,7 @@ const st = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.borderSoft,
     gap: 10,
   },
   templatesBarLabel: {
@@ -1327,23 +1359,24 @@ const st = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     paddingLeft: 12,
     paddingRight: 8,
     paddingVertical: 7,
     gap: 6,
     maxWidth: 140,
+    ...SHADOW.card,
   },
   templateChipText: {
     fontSize: 12,
     fontFamily: "PlusJakartaSans_500Medium",
-    color: "#334155",
+    color: COLORS.textPrimary,
   },
   templateChipX: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1355,6 +1388,15 @@ const st = StyleSheet.create({
     paddingVertical: 20,
     gap: 12,
   },
+  // Primary "step question" heading — one per step, larger/bolder than
+  // secondary in-step field labels (see sectionLabel below).
+  stepTitle: {
+    fontSize: 20,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: COLORS.textPrimary,
+    letterSpacing: -0.4,
+    marginBottom: 2,
+  },
   sectionLabel: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_600SemiBold",
@@ -1363,7 +1405,7 @@ const st = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.borderSoft,
     marginHorizontal: 20,
   },
 
@@ -1371,16 +1413,17 @@ const st = StyleSheet.create({
   input: {
     flexDirection: "row",
     alignItems: "center",
-    height: 50,
+    height: 52,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
+    ...SHADOW.card,
   },
   inputFocused: {
     borderColor: COLORS.primary,
-    backgroundColor: "#FAFFFE",
+    backgroundColor: COLORS.primarySoft,
   },
   inputPrefix: {
     fontSize: 15,
@@ -1404,15 +1447,15 @@ const st = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1.5,
     borderColor: COLORS.border,
   },
   chipActive: {
-    backgroundColor: COLORS.textPrimary,
-    borderColor: COLORS.textPrimary,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   chipText: {
     fontSize: 13,
@@ -1427,15 +1470,16 @@ const st = StyleSheet.create({
   dateBtn: {
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     backgroundColor: COLORS.surface,
     paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
+    ...SHADOW.card,
   },
   dateBtnLabel: {
     fontSize: 10,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#CBD5E1",
+    color: COLORS.textMuted,
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginBottom: 3,
@@ -1446,7 +1490,7 @@ const st = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   dateBtnPlaceholder: {
-    color: "#CBD5E1",
+    color: COLORS.textMuted,
     fontFamily: "PlusJakartaSans_400Regular",
   },
   dateArrow: {
@@ -1460,19 +1504,20 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     borderWidth: 1.5,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
+    ...SHADOW.card,
   },
   optionRowActive: {
     borderColor: COLORS.primary,
-    backgroundColor: "#FAFFFE",
+    backgroundColor: COLORS.primarySoft,
   },
   optionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
@@ -1499,10 +1544,11 @@ const st = StyleSheet.create({
   textarea: {
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: RADIUS.xl,
     backgroundColor: COLORS.surface,
     padding: 14,
     minHeight: 96,
+    ...SHADOW.card,
   },
   textareaInput: {
     fontSize: 14,
@@ -1518,8 +1564,8 @@ const st = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: 18,
     paddingVertical: 2,
     ...SHADOW.card,
   },
@@ -1530,7 +1576,7 @@ const st = StyleSheet.create({
     gap: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.borderSoft,
   },
   reviewRowLast: {
     borderBottomWidth: 0,
@@ -1562,7 +1608,7 @@ const st = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1574,9 +1620,9 @@ const st = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#F1F5F9",
+    height: 46,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1589,8 +1635,8 @@ const st = StyleSheet.create({
   },
   saveBtn: {
     flex: 2,
-    height: 44,
-    borderRadius: 10,
+    height: 46,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.textPrimary,
     alignItems: "center",
     justifyContent: "center",
@@ -1611,7 +1657,7 @@ const st = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 28 : 18,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.borderSoft,
   },
   backBtn: {
     flexDirection: "row",
@@ -1619,8 +1665,8 @@ const st = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 26,
-    backgroundColor: "#F1F5F9",
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -1634,15 +1680,14 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: COLORS.primary,
-    borderRadius: 30,
-    paddingVertical: 15,
-    paddingLeft: 24,
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.md,
+    paddingLeft: SPACING.xl,
     paddingRight: 16,
     minWidth: 152,
-    ...Platform.select({
-      ios: { shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16 },
-      android: { elevation: 8 },
-    }),
+    ...SHADOW.raised,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.4,
   },
   submitBtnDisabled: {
     opacity: 0.45,
@@ -1674,19 +1719,16 @@ const st = StyleSheet.create({
     zIndex: 60,
     elevation: 60,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    backgroundColor: "rgba(28, 27, 24, 0.45)",
   },
   calSheet: {
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: RADIUS.xxl,
+    borderTopRightRadius: RADIUS.xxl,
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === "ios" ? 32 : 20,
     paddingTop: 14,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.08, shadowRadius: 20 },
-      android: { elevation: 12 },
-    }),
+    ...SHADOW.raised,
   },
   calSheetHandle: {
     width: 36,
@@ -1720,7 +1762,7 @@ const st = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1735,7 +1777,7 @@ const st = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 20,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1762,7 +1804,7 @@ const st = StyleSheet.create({
     textAlign: "center",
     fontSize: 11,
     fontFamily: "PlusJakartaSans_600SemiBold",
-    color: "#CBD5E1",
+    color: COLORS.textMuted,
     textTransform: "uppercase",
   },
   calGrid: {
@@ -1775,7 +1817,7 @@ const st = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: RADIUS.lg,
     marginBottom: 4,
   },
   calCellSelected: {

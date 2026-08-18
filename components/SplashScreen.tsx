@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { Animated, Easing, Image } from "react-native"
 
 import { IMAGES } from "@/constants"
+import { COLORS } from "@/constants/theme"
 
 interface SplashScreenProps {
   onFinish?: () => void
@@ -46,7 +47,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <Animated.View
-      style={{ opacity: screenOpacity, backgroundColor: "#FFFFFF" }}
+      style={{ opacity: screenOpacity, backgroundColor: COLORS.background }}
       className="absolute inset-0 z-[9999] items-center justify-center"
     >
       <Animated.View
@@ -65,7 +66,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
           style={{
             marginTop: 18,
             fontSize: 11,
-            color: "#9CA3AF",
+            color: COLORS.textMuted,
             letterSpacing: 2.5,
             textTransform: "uppercase",
             fontFamily: "DMSans_500Medium",

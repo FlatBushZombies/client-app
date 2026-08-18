@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,11 +16,13 @@ import {
   View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { getApiUrl } from "@/lib/fetch"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { RADIUS, SCREEN_PADDING, SPACING } from "@/constants/layout"
 import { COLORS, SHADOW } from "@/constants/theme"
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/lib/toast"
+
+const PORTFOLIO_ICON = require("../../assets/icons/portfolio.png")
 
 type ApplicationStatus = "pending" | "accepted" | "rejected" | "completed"
 
@@ -159,10 +162,10 @@ const STATUS_META: Record<
   ApplicationStatus,
   { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }
 > = {
-  pending: { label: "Pending", color: "#92400E", bg: "#FEF3C7", icon: "time-outline" },
+  pending: { label: "Pending", color: "#92400E", bg: COLORS.accentAmberSoft, icon: "time-outline" },
   accepted: { label: "Accepted", color: COLORS.primaryDark, bg: COLORS.primarySoft, icon: "checkmark-circle" },
   rejected: { label: "Rejected", color: "#B91C1C", bg: "#FEE2E2", icon: "close-circle" },
-  completed: { label: "Completed", color: "#1D4ED8", bg: "#DBEAFE", icon: "checkmark-done-circle" },
+  completed: { label: "Completed", color: COLORS.info, bg: COLORS.infoSoft, icon: "checkmark-done-circle" },
 }
 
 function StatusPill({ status }: { status: ApplicationStatus }) {
@@ -190,7 +193,7 @@ function MetricCard({
     tone === "green"
       ? { bg: COLORS.primarySoft, text: COLORS.primaryDark }
       : tone === "amber"
-      ? { bg: "#FFFBEB", text: "#92400E" }
+      ? { bg: COLORS.accentAmberSoft, text: "#92400E" }
       : { bg: COLORS.infoSoft, text: COLORS.info }
 
   return (
@@ -223,7 +226,7 @@ function StarPicker({
           <Ionicons
             name={value <= rating ? "star" : "star-outline"}
             size={22}
-            color={value <= rating ? "#F59E0B" : COLORS.textMuted}
+            color={value <= rating ? COLORS.accentAmber : COLORS.textMuted}
           />
         </Pressable>
       ))}
@@ -428,7 +431,7 @@ export default function ApplicationsScreen() {
       }
 
       const token = await waitForClerkToken(getToken)
-      const response = await fetch(getApiUrl("/api/applications/client"), {
+      const response = await fetchWithRetry(getApiUrl("/api/applications/client"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -648,7 +651,7 @@ export default function ApplicationsScreen() {
         {jobs.length === 0 ? (
           <View style={st.emptyState}>
             <View style={st.emptyIcon}>
-              <Ionicons name="briefcase-outline" size={32} color="#94A3B8" />
+              <Ionicons name="briefcase-outline" size={32} color={COLORS.accentPurple} />
             </View>
             <Text style={st.emptyTitle}>No applications yet</Text>
             <Text style={st.emptyBody}>
@@ -674,8 +677,8 @@ export default function ApplicationsScreen() {
               </View>
 
               <View style={st.jobStatBar}>
-                <View style={[st.jobStatChip, { backgroundColor: "#FFFBEB" }]}>
-                  <View style={[st.jobStatDot, { backgroundColor: "#F59E0B" }]} />
+                <View style={[st.jobStatChip, { backgroundColor: COLORS.accentAmberSoft }]}>
+                  <View style={[st.jobStatDot, { backgroundColor: COLORS.accentAmber }]} />
                   <Text style={[st.jobStatText, { color: "#92400E" }]}>Pending {summary.pending}</Text>
                 </View>
                 <View style={[st.jobStatChip, { backgroundColor: COLORS.primarySoft }]}>
@@ -776,7 +779,7 @@ export default function ApplicationsScreen() {
                               ) : null}
                               {isBestMatch ? (
                                 <View style={st.bestMatchBadge}>
-                                  <Ionicons name="trophy" size={10} color={COLORS.primaryDark} />
+                                  <Ionicons name="trophy" size={10} color="#92400E" />
                                   <Text style={st.bestMatchBadgeText}>Best match</Text>
                                 </View>
                               ) : null}
@@ -897,7 +900,7 @@ export default function ApplicationsScreen() {
                               <Ionicons
                                 name={isShortlisted ? "bookmark" : "bookmark-outline"}
                                 size={14}
-                                color={isShortlisted ? COLORS.primaryDark : "#334155"}
+                                color={isShortlisted ? COLORS.primaryDark : COLORS.textSecondary}
                               />
                               <Text
                                 style={[
@@ -1009,51 +1012,75 @@ export default function ApplicationsScreen() {
 
                         {/* Actions */}
                         <View style={st.actionsRow}>
-                          {application.conversationId ? (
-                            <Pressable
-                              onPress={() => openCoordinationBoard(application, job)}
-                              style={({ pressed }) => [st.actionCoordinate, { opacity: pressed ? 0.85 : 1 }]}
-                            >
-                              <Ionicons name="chatbubbles-outline" size={14} color={COLORS.surface} />
-                              <Text style={st.actionCoordinateText}>Open coordination board</Text>
-                            </Pressable>
-                          ) : null}
+                          <Pressable
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(root)/specialist/[clerkId]",
+                                params: {
+                                  clerkId: application.freelancerClerkId,
+                                  displayName: application.freelancerName,
+                                },
+                              })
+                            }
+                            style={({ pressed }) => [st.actionPortfolioWrap, { opacity: pressed ? 0.85 : 1 }]}
+                          >
+                            <View style={st.actionPortfolioBtn}>
+                              <Image source={PORTFOLIO_ICON} style={st.actionPortfolioIcon} resizeMode="contain" />
+                            </View>
+                            <Text style={st.actionPortfolioLabel}>Portfolio</Text>
+                          </Pressable>
 
-                          {isPending ? (
-                            <>
+                          <View style={st.actionsRowRight}>
+                            {application.conversationId ? (
                               <Pressable
-                                onPress={() => updateApplicationStatus(application, "accepted")}
-                                disabled={updatingStatus === application.id}
-                                style={({ pressed }) => [st.actionAccept, { opacity: pressed ? 0.85 : 1 }]}
+                                onPress={() => openCoordinationBoard(application, job)}
+                                style={({ pressed }) => [
+                                  st.actionCoordinate,
+                                  isPending && st.actionCoordinateSecondary,
+                                  { opacity: pressed ? 0.85 : 1 },
+                                ]}
                               >
-                                <Ionicons name="checkmark-circle" size={16} color={COLORS.surface} />
-                                <Text style={st.actionAcceptText}>
-                                  {updatingStatus === application.id ? "Updating..." : "Accept"}
+                                <Ionicons name="chatbubbles-outline" size={14} color={COLORS.surface} />
+                                <Text style={st.actionCoordinateText}>Open coordination board</Text>
+                              </Pressable>
+                            ) : null}
+
+                            {isPending ? (
+                              <>
+                                <Pressable
+                                  onPress={() => updateApplicationStatus(application, "accepted")}
+                                  disabled={updatingStatus === application.id}
+                                  style={({ pressed }) => [st.actionAccept, { opacity: pressed ? 0.85 : 1 }]}
+                                >
+                                  <Ionicons name="checkmark-circle" size={16} color={COLORS.surface} />
+                                  <Text style={st.actionAcceptText}>
+                                    {updatingStatus === application.id ? "Updating..." : "Accept"}
+                                  </Text>
+                                </Pressable>
+                                <Pressable
+                                  onPress={() => updateApplicationStatus(application, "rejected")}
+                                  disabled={updatingStatus === application.id}
+                                  style={({ pressed }) => [st.actionReject, { opacity: pressed ? 0.85 : 1 }]}
+                                >
+                                  <Ionicons name="close-circle" size={16} color={COLORS.badgeRed} />
+                                  <Text style={st.actionRejectText}>Reject</Text>
+                                </Pressable>
+                              </>
+                            ) : null}
+
+                            {isAccepted ? (
+                              <Pressable
+                                onPress={() => updateApplicationStatus(application, "completed")}
+                                disabled={updatingStatus === application.id}
+                                style={({ pressed }) => [st.actionComplete, { opacity: pressed ? 0.85 : 1 }]}
+                              >
+                                <Ionicons name="checkmark-done-circle" size={16} color={COLORS.info} />
+                                <Text style={st.actionCompleteText}>
+                                  {updatingStatus === application.id ? "Updating..." : "Mark Complete"}
                                 </Text>
                               </Pressable>
-                              <Pressable
-                                onPress={() => updateApplicationStatus(application, "rejected")}
-                                disabled={updatingStatus === application.id}
-                                style={({ pressed }) => [st.actionReject, { opacity: pressed ? 0.85 : 1 }]}
-                              >
-                                <Ionicons name="close-circle" size={16} color={COLORS.badgeRed} />
-                                <Text style={st.actionRejectText}>Reject</Text>
-                              </Pressable>
-                            </>
-                          ) : null}
-
-                          {isAccepted ? (
-                            <Pressable
-                              onPress={() => updateApplicationStatus(application, "completed")}
-                              disabled={updatingStatus === application.id}
-                              style={({ pressed }) => [st.actionComplete, { opacity: pressed ? 0.85 : 1 }]}
-                            >
-                              <Ionicons name="checkmark-done-circle" size={16} color="#1D4ED8" />
-                              <Text style={st.actionCompleteText}>
-                                {updatingStatus === application.id ? "Updating..." : "Mark Complete"}
-                              </Text>
-                            </Pressable>
-                          ) : null}
+                            ) : null}
+                          </View>
                         </View>
                       </View>
                     </View>
@@ -1114,13 +1141,33 @@ export default function ApplicationsScreen() {
                               </Text>
                             ) : null}
                           </View>
-                          <Pressable
-                            onPress={() => messageSpecialist(specialist)}
-                            disabled={messagingClerkId === specialist.clerkId}
-                            style={({ pressed }) => [st.recommendedMessageBtn, { opacity: pressed ? 0.85 : 1 }]}
-                          >
-                            <Ionicons name="chatbubble-outline" size={14} color={COLORS.surface} />
-                          </Pressable>
+                          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                            <Pressable
+                              onPress={() =>
+                                router.push({
+                                  pathname: "/(root)/specialist/[clerkId]",
+                                  params: {
+                                    clerkId: specialist.clerkId,
+                                    displayName: specialist.displayName,
+                                    imageUrl: specialist.imageUrl || undefined,
+                                  },
+                                })
+                              }
+                              style={({ pressed }) => [{ alignItems: "center" }, { opacity: pressed ? 0.85 : 1 }]}
+                            >
+                              <View style={st.recommendedPortfolioBtn}>
+                                <Image source={PORTFOLIO_ICON} style={st.actionPortfolioIcon} resizeMode="contain" />
+                              </View>
+                              <Text style={st.actionPortfolioLabel}>Portfolio</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => messageSpecialist(specialist)}
+                              disabled={messagingClerkId === specialist.clerkId}
+                              style={({ pressed }) => [st.recommendedMessageBtn, { opacity: pressed ? 0.85 : 1 }]}
+                            >
+                              <Ionicons name="chatbubble-outline" size={16} color={COLORS.surface} />
+                            </Pressable>
+                          </View>
                         </View>
                       ))
                     )}
@@ -1248,7 +1295,7 @@ const st = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 32,
-    backgroundColor: COLORS.surfaceMuted,
+    backgroundColor: COLORS.accentPurpleSoft,
   },
   emptyTitle: {
     fontSize: 17,
@@ -1301,7 +1348,7 @@ const st = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    color: "#CBD5E1",
+    color: COLORS.textMuted,
   },
   jobCountValue: {
     marginTop: 2,
@@ -1371,7 +1418,7 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 3,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.primarySoft,
+    backgroundColor: COLORS.accentAmberSoft,
     paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
   },
@@ -1380,7 +1427,7 @@ const st = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    color: COLORS.primaryDark,
+    color: "#92400E",
   },
 
   // Recommended specialists panel
@@ -1411,9 +1458,12 @@ const st = StyleSheet.create({
   recommendedCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceMuted,
-    padding: SPACING.sm,
+    borderRadius: RADIUS.xl,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    padding: SPACING.md,
+    ...SHADOW.card,
   },
   recommendedName: {
     fontSize: 13,
@@ -1426,10 +1476,18 @@ const st = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 4,
   },
+  recommendedPortfolioBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   recommendedMessageBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -1440,7 +1498,7 @@ const st = StyleSheet.create({
     marginBottom: SPACING.md,
     flexDirection: "row",
     borderRadius: RADIUS.xxl,
-    backgroundColor: COLORS.surfaceMuted,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: "hidden",
@@ -1481,7 +1539,7 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 3,
     borderRadius: RADIUS.pill,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: COLORS.accentAmberSoft,
     paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
   },
@@ -1670,7 +1728,7 @@ const st = StyleSheet.create({
   shortlistToggleText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#334155",
+    color: COLORS.textSecondary,
   },
   shortlistToggleTextActive: {
     color: COLORS.primaryDark,
@@ -1739,17 +1797,57 @@ const st = StyleSheet.create({
   // Actions
   actionsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: SPACING.xs,
+    marginTop: SPACING.xs,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSoft,
+  },
+  actionsRowRight: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: SPACING.xs,
+  },
+  actionPortfolioWrap: {
+    alignItems: "center",
+  },
+  actionPortfolioBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionPortfolioIcon: {
+    width: 20,
+    height: 20,
+  },
+  actionPortfolioLabel: {
+    marginTop: 3,
+    fontSize: 10,
+    fontWeight: "700",
+    color: COLORS.primaryDark,
   },
   actionCoordinate: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.textPrimary,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 1,
+    ...SHADOW.raised,
+  },
+  // Applied when Accept/Reject are also visible in the row, so only one
+  // pill reads as "the" primary action at a time.
+  actionCoordinateSecondary: {
+    backgroundColor: COLORS.textPrimary,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   actionCoordinateText: {
     fontSize: 12,
@@ -1764,6 +1862,7 @@ const st = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 1,
+    ...SHADOW.raised,
   },
   actionAcceptText: {
     fontSize: 12,
@@ -1775,9 +1874,9 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#FEE2E2",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "#FEE2E2",
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 1,
   },
@@ -1791,13 +1890,13 @@ const st = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderRadius: RADIUS.pill,
-    backgroundColor: "#DBEAFE",
+    backgroundColor: COLORS.infoSoft,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 1,
   },
   actionCompleteText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#1D4ED8",
+    color: COLORS.info,
   },
 })

@@ -144,10 +144,10 @@ const styles = StyleSheet.create({
   },
   pillFallback: {
     backgroundColor: Platform.OS === "ios"
-      ? "rgba(252,252,252,0.91)"
-      : "rgba(255,255,255,0.97)",
+      ? "rgba(255,253,248,0.93)"
+      : "rgba(255,254,250,0.98)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.055)",
+    borderColor: "rgba(138,109,63,0.09)",
   },
   tabRow: {
     flexDirection: "row",
@@ -176,10 +176,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#fff",
+    borderColor: COLORS.surface,
   },
   badgeText: {
-    color: "#fff",
+    color: COLORS.surface,
     fontSize: 9,
     lineHeight: 11,
     fontFamily: "PlusJakartaSans_700Bold",
@@ -213,6 +213,7 @@ export default function Layout() {
       <Tabs.Screen name="favorites" options={{ href: null }} />
       <Tabs.Screen name="saved-searches" options={{ href: null }} />
       <Tabs.Screen name="analytics" options={{ href: null }} />
+      <Tabs.Screen name="specialist/[clerkId]" options={{ href: null }} />
     </Tabs>
   )
 }

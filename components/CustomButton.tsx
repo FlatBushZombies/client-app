@@ -1,20 +1,25 @@
 import { TouchableOpacity, Text } from "react-native";
 
 import { ButtonProps } from "@/types/type";
+import { SHADOW } from "@/constants/theme";
 
 const getBgVariantStyle = (variant: ButtonProps["bgVariant"]) => {
   switch (variant) {
     case "secondary":
-      return "bg-gray-500";
+      // COLORS.textSecondary (#8A8578) — NativeWind arbitrary classes must
+      // be static strings, so the token value is inlined here.
+      return "bg-[#8A8578]";
     case "danger":
-      return "bg-red-500";
+      // COLORS.badgeRed (#EF4444)
+      return "bg-[#EF4444]";
     case "success":
-      return "bg-green-500";
+      // COLORS.accentGreen (#22C55E)
+      return "bg-[#22C55E]";
     case "outline":
-      return "bg-transparent border-neutral-300 border-[0.5px]";
+      // COLORS.border (#EAE3D6) — soft warm outline instead of cool neutral
+      return "bg-transparent border-[#EAE3D6] border-[1.5px]";
     default:
-      // COLORS.primary (#059669) — NativeWind arbitrary classes must be
-      // static strings, so the token value is inlined here.
+      // COLORS.primary (#059669)
       return "bg-[#059669]";
   }
 };
@@ -22,7 +27,8 @@ const getBgVariantStyle = (variant: ButtonProps["bgVariant"]) => {
 const getTextVariantStyle = (variant: ButtonProps["textVariant"]) => {
   switch (variant) {
     case "primary":
-      return "text-black";
+      // COLORS.textPrimary (#1C1B18) — warm near-black, not pure black
+      return "text-[#1C1B18]";
     case "secondary":
       return "text-gray-100";
     case "danger":
@@ -34,6 +40,11 @@ const getTextVariantStyle = (variant: ButtonProps["textVariant"]) => {
   }
 };
 
+// Outline buttons rely on their border for definition and get a lighter
+// float; solid/filled variants get the fuller glossy "raised" underglow.
+const getShadowStyle = (variant: ButtonProps["bgVariant"]) =>
+  variant === "outline" ? SHADOW.card : SHADOW.raised;
+
 const CustomButton = ({
   onPress,
   title,
@@ -42,12 +53,14 @@ const CustomButton = ({
   IconLeft,
   IconRight,
   className = "",
+  style,
   ...props
 }: ButtonProps) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`w-full rounded-full px-4 py-4 flex flex-row justify-center items-center shadow-md shadow-neutral-400/70 ${getBgVariantStyle(bgVariant)} ${className}`}
+      className={`w-full rounded-full px-4 py-4 flex flex-row justify-center items-center ${getBgVariantStyle(bgVariant)} ${className}`}
+      style={[getShadowStyle(bgVariant), style]}
       {...props}
     >
       {IconLeft && <IconLeft />}

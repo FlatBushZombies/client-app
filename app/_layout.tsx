@@ -30,7 +30,9 @@ import { useEffect, useState } from "react";
 import CustomSplashScreen from "@/components/SplashScreen";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/Toast";
-import { COLORS } from "@/constants/theme";
+import { COLORS, SHADOW } from "@/constants/theme";
+import { RADIUS } from "@/constants/layout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -119,17 +121,13 @@ function InAppNotificationBanner() {
         left: 16,
         right: 16,
         zIndex: 1000,
-        borderRadius: 20,
+        borderRadius: RADIUS.xl,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        backgroundColor: "#ffffff",
+        backgroundColor: COLORS.surface,
         borderWidth: 1,
-        borderColor: "#E5E7EB",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-        elevation: 8,
+        borderColor: COLORS.border,
+        ...SHADOW.raised,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
@@ -146,7 +144,7 @@ function InAppNotificationBanner() {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              color: "#111827",
+              color: COLORS.textPrimary,
               fontSize: 14,
               fontFamily: "PlusJakartaSans_700Bold",
               marginBottom: 2,
@@ -156,7 +154,7 @@ function InAppNotificationBanner() {
           </Text>
           <Text
             style={{
-              color: "#4B5563",
+              color: COLORS.textSecondary,
               fontSize: 13,
               lineHeight: 18,
               fontFamily: "PlusJakartaSans_500Medium",
@@ -268,7 +266,9 @@ export default function RootLayout() {
         <PushNotificationRegistration />
 
         {/* App content renders behind the splash; revealed once it fades out */}
-        <Stack screenOptions={{ headerShown: false }} />
+        <ErrorBoundary>
+          <Stack screenOptions={{ headerShown: false }} />
+        </ErrorBoundary>
         {splashAnimDone ? <InAppNotificationBanner /> : null}
         <Toast config={toastConfig} />
 

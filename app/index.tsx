@@ -8,9 +8,9 @@ import { router } from "expo-router"
 import { useAuth, useUser } from "@clerk/clerk-expo"
 import { IMAGES } from "@/constants"
 import { ensureBackendUser } from "@/lib/userSync"
-import { SPACING } from "@/constants/layout"
+import { SPACING, RADIUS } from "@/constants/layout"
 import { showErrorToast } from "@/lib/toast"
-import { COLORS, GRADIENT } from "@/constants/theme"
+import { COLORS, GRADIENT, SHADOW } from "@/constants/theme"
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -55,7 +55,7 @@ export default function Index() {
 
   if (!isLoaded) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.background }}>
         <Image
           source={IMAGES.logo}
           style={{ width: 64, height: 64, borderRadius: 18 }}
@@ -68,27 +68,27 @@ export default function Index() {
 
   if (isSignedIn) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: COLORS.background }}>
         <Image
           source={IMAGES.logo}
           style={{ width: 64, height: 64, borderRadius: 18 }}
           resizeMode="contain"
         />
         <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
-        <Text className="mt-3 text-sm text-gray-400 tracking-wide font-jakarta">Redirecting…</Text>
+        <Text className="mt-3 text-sm tracking-wide font-jakarta" style={{ color: COLORS.textMuted }}>Redirecting…</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white overflow-hidden">
+    <SafeAreaView className="flex-1 overflow-hidden" style={{ backgroundColor: COLORS.background }}>
 
       {/* ── decorative top corner rings ── */}
-      <View className="absolute w-[300px] h-[300px] rounded-full border border-gray-200"
-        style={{ top: -120, right: -100 }}
+      <View className="absolute w-[300px] h-[300px] rounded-full"
+        style={{ top: -120, right: -100, borderWidth: 1, borderColor: COLORS.border }}
       />
-      <View className="absolute w-[200px] h-[200px] rounded-full border border-gray-100"
-        style={{ top: -60, right: -40 }}
+      <View className="absolute w-[200px] h-[200px] rounded-full"
+        style={{ top: -60, right: -40, borderWidth: 1, borderColor: COLORS.borderSoft }}
       />
 
       <View
@@ -105,7 +105,7 @@ export default function Index() {
           {/* logo */}
           <View
             className="rounded-3xl mb-6"
-            style={{ shadowColor: "#0F172A", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.14, shadowRadius: 24, elevation: 8 }}
+            style={SHADOW.raised}
           >
             <Image
               source={IMAGES.logo}
@@ -116,7 +116,7 @@ export default function Index() {
           </View>
 
           {/* wordmark */}
-          <Text className="text-xs font-bold text-gray-400 tracking-[3px] uppercase mb-5 font-jakarta-bold">
+          <Text className="text-xs font-bold tracking-[3px] uppercase mb-5 font-jakarta-bold" style={{ color: COLORS.textMuted }}>
             QuickHands
           </Text>
 
@@ -124,7 +124,7 @@ export default function Index() {
           <View className="w-9 h-1 rounded-full mb-7" style={{ backgroundColor: COLORS.primary }} />
 
           {/* headline */}
-          <Text className="text-[46px] font-extrabold text-gray-900 leading-[50px] tracking-tighter mb-5 font-jakarta-bold">
+          <Text className="text-[46px] font-extrabold leading-[50px] tracking-tighter mb-5 font-jakarta-bold" style={{ color: COLORS.textPrimary }}>
             Find{" "}
             <Text style={{ fontFamily: "DMSerifDisplay_400Regular_Italic", color: COLORS.primary, fontSize: 46 }}>
               specialists
@@ -133,7 +133,7 @@ export default function Index() {
           </Text>
 
           {/* subtitle */}
-          <Text className="text-base text-gray-500 leading-7 tracking-wide font-jakarta max-w-[280px]">
+          <Text className="text-base leading-7 tracking-wide font-jakarta max-w-[280px]" style={{ color: COLORS.textSecondary }}>
             Connect with top-tier specialists to get the job done — fast, reliable, and nearby.
           </Text>
         </View>
@@ -146,7 +146,7 @@ export default function Index() {
             onPress={handleGetStarted}
             activeOpacity={0.88}
             style={{
-              borderRadius: 20,
+              borderRadius: RADIUS.pill,
               overflow: "hidden",
               marginBottom: 16,
               shadowColor: COLORS.primary,
@@ -200,11 +200,12 @@ export default function Index() {
 
           {/* secondary CTA */}
           <TouchableOpacity
-            className="py-4 items-center border-[1.5px] border-gray-200 rounded-[20px] mb-7 bg-gray-50/60"
+            className="py-4 items-center rounded-full mb-7"
+            style={{ borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surfaceMuted }}
             onPress={handleBrowseServices}
             activeOpacity={0.65}
           >
-            <Text className="text-sm font-semibold text-gray-500 tracking-wide font-jakarta-semibold">
+            <Text className="text-sm font-semibold tracking-wide font-jakarta-semibold" style={{ color: COLORS.textSecondary }}>
               I want to offer services
             </Text>
           </TouchableOpacity>
@@ -212,7 +213,7 @@ export default function Index() {
           {/* trust indicator */}
           <View className="flex-row items-center justify-center gap-2">
             <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.primary, opacity: 0.5 }} />
-            <Text className="text-xs text-gray-400 tracking-wide font-jakarta">
+            <Text className="text-xs tracking-wide font-jakarta" style={{ color: COLORS.textMuted }}>
               Access top-tier specialists
             </Text>
           </View>

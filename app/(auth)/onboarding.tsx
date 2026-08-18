@@ -14,7 +14,7 @@ import { useUser } from "@clerk/clerk-expo"
 import Swiper from "react-native-swiper"
 import { Ionicons } from "@expo/vector-icons"
 import { SCREEN_PADDING, RADIUS, BUTTON } from "@/constants/layout"
-import { COLORS } from "@/constants/theme"
+import { COLORS, SHADOW } from "@/constants/theme"
 
 const { width } = Dimensions.get("window")
 
@@ -24,24 +24,24 @@ const onboardingData = [
     icon: "search",
     title: "Find the Right\nSpecialist",
     description: "Browse through skilled professionals ready to help with your tasks. From cleaning to tech support, we've got you covered.",
-    color: COLORS.primary,
-    bgColor: "#DCFCE7",
+    color: COLORS.accentGreen,
+    bgColor: COLORS.accentGreenSoft,
   },
   {
     id: 2,
     icon: "document-text",
     title: "Post Your Task\nEasily",
     description: "Describe what you need done, set your budget, and let specialists come to you with their best offers.",
-    color: "#1A7A4A",
-    bgColor: "#D1FAE5",
+    color: COLORS.accentPurple,
+    bgColor: COLORS.accentPurpleSoft,
   },
   {
     id: 3,
     icon: "checkmark-circle",
     title: "Get It Done\nQuickly",
     description: "Review applications, choose the best fit, and watch your task get completed to perfection.",
-    color: "#166534",
-    bgColor: "#BBF7D0",
+    color: COLORS.accentAmber,
+    bgColor: COLORS.accentAmberSoft,
   },
 ]
 
@@ -72,7 +72,7 @@ const OnboardingScreen = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: COLORS.background }}>
       <View className="flex-1">
         {/* Skip Button */}
         {!isLastSlide && (
@@ -84,14 +84,14 @@ const OnboardingScreen = () => {
                 paddingHorizontal: 20,
                 paddingVertical: 10,
                 borderRadius: RADIUS.pill,
-                backgroundColor: "#F3F4F6",
+                backgroundColor: COLORS.surfaceMuted,
               }}
             >
               <Text
                 style={{
                   fontSize: 14,
                   fontWeight: "600",
-                  color: "#6B7280",
+                  color: COLORS.textSecondary,
                   fontFamily: "PlusJakartaSans_600SemiBold",
                 }}
               >
@@ -107,7 +107,7 @@ const OnboardingScreen = () => {
           dot={
             <View
               style={{
-                backgroundColor: "#D1D5DB",
+                backgroundColor: COLORS.borderDashed,
                 width: 8,
                 height: 8,
                 borderRadius: 4,
@@ -164,35 +164,46 @@ const OnboardingScreen = () => {
                 <Ionicons name={item.icon as any} size={72} color={item.color} />
               </View>
 
-              {/* Title */}
-              <Text
+              {/* Text panel */}
+              <View
                 style={{
-                  fontSize: 32,
-                  fontWeight: "800",
-                  color: "#111827",
-                  textAlign: "center",
-                  marginBottom: 20,
-                  lineHeight: 40,
-                  letterSpacing: -0.5,
-                  fontFamily: "PlusJakartaSans_700Bold",
+                  backgroundColor: COLORS.surface,
+                  borderRadius: RADIUS.xxl,
+                  paddingVertical: 24,
+                  paddingHorizontal: 20,
+                  ...SHADOW.card,
                 }}
               >
-                {item.title}
-              </Text>
+                {/* Title */}
+                <Text
+                  style={{
+                    fontSize: 32,
+                    fontWeight: "800",
+                    color: COLORS.textPrimary,
+                    textAlign: "center",
+                    marginBottom: 16,
+                    lineHeight: 40,
+                    letterSpacing: -0.5,
+                    fontFamily: "PlusJakartaSans_700Bold",
+                  }}
+                >
+                  {item.title}
+                </Text>
 
-              {/* Description */}
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: "#6B7280",
-                  textAlign: "center",
-                  lineHeight: 26,
-                  paddingHorizontal: 8,
-                  fontFamily: "PlusJakartaSans_400Regular",
-                }}
-              >
-                {item.description}
-              </Text>
+                {/* Description */}
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: COLORS.textSecondary,
+                    textAlign: "center",
+                    lineHeight: 26,
+                    paddingHorizontal: 8,
+                    fontFamily: "PlusJakartaSans_400Regular",
+                  }}
+                >
+                  {item.description}
+                </Text>
+              </View>
             </View>
           ))}
         </Swiper>
@@ -219,9 +230,9 @@ const OnboardingScreen = () => {
               alignItems: "center",
               justifyContent: "center",
               shadowColor: COLORS.primary,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.32,
+              shadowRadius: 20,
               elevation: 8,
             }}
           >
@@ -262,7 +273,7 @@ const OnboardingScreen = () => {
               <Text
                 style={{
                   fontSize: 12,
-                  color: "#9CA3AF",
+                  color: COLORS.textMuted,
                   fontFamily: "PlusJakartaSans_400Regular",
                 }}
               >

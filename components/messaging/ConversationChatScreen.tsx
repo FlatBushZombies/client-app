@@ -27,6 +27,19 @@ const CLIENT_TAGS = [
   { kind: "confirm-arrival", label: "Confirm arrival", icon: "calendar-outline" as const },
 ];
 
+// The specialist-side app offers a different quick-tag set (see its
+// ConversationChatScreen.tsx) — a client's chat still needs to render the
+// correct icon for tags THEY sent, even though this app never offers them
+// for sending. Without this, any freelancer-sent tag falls through to a
+// generic flag icon that looks like a rendering bug.
+const OTHER_PARTY_TAG_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  "available-now": "checkmark-circle-outline",
+  "need-address": "location-outline",
+  "need-photos": "camera-outline",
+  "running-late": "time-outline",
+  "job-complete": "checkmark-done-outline",
+};
+
 type Props = {
   clerkUserId: string;
   conversationId: string;
@@ -47,6 +60,20 @@ function getInitials(name?: string) {
   const parts = trimmed.split(/\s+/).filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Same warm pastel accent trio + hash used by the conversation list, so a
+// given person's fallback initials avatar reads the same color here too.
+const AVATAR_ACCENTS: { bg: string; ring: string; text: string }[] = [
+  { bg: COLORS.primarySoft, ring: COLORS.primary, text: COLORS.primaryDark },
+  { bg: COLORS.accentPurpleSoft, ring: COLORS.accentPurple, text: COLORS.accentPurple },
+  { bg: COLORS.accentAmberSoft, ring: COLORS.accentAmber, text: COLORS.accentAmber },
+];
+
+function getAvatarAccent(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_ACCENTS[hash % AVATAR_ACCENTS.length];
 }
 
 function parseCard(text: string): ParsedCard | null {
@@ -85,7 +112,7 @@ function breaksGroup(a: ServerMessage, b: ServerMessage) {
 
 function kindIcon(kind: string): keyof typeof Ionicons.glyphMap {
   const tag = CLIENT_TAGS.find((t) => t.kind === kind);
-  return tag?.icon ?? "flag-outline";
+  return tag?.icon ?? OTHER_PARTY_TAG_ICONS[kind] ?? "chatbubble-outline";
 }
 
 export function ConversationChatScreen({
@@ -98,6 +125,7 @@ export function ConversationChatScreen({
   const [messageText, setMessageText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendingTag, setSendingTag] = useState<string | null>(null);
+  const avatarAccent = getAvatarAccent(otherDisplayName || conversationId);
 
   const { messages, sendMessage, loadingHistory, lastError } = useMessagingSocket({
     serverUrl: API_BASE_URL,
@@ -178,8 +206,14 @@ export function ConversationChatScreen({
                       otherAvatarUrl ? (
                         <Image source={{ uri: otherAvatarUrl }} style={styles.avatar} />
                       ) : (
-                        <View style={styles.avatar}>
-                          <Text style={styles.avatarText}>
+                        <View
+                          style={[
+                            styles.avatar,
+                            styles.avatarFallback,
+                            { backgroundColor: avatarAccent.bg, borderColor: avatarAccent.ring },
+                          ]}
+                        >
+                          <Text style={[styles.avatarText, { color: avatarAccent.text }]}>
                             {getInitials(otherDisplayName || item.senderName)}
                           </Text>
                         </View>
@@ -191,7 +225,7 @@ export function ConversationChatScreen({
                 {(() => {
                   const BubbleContainer = isMine ? LinearGradient : View;
                   const bubbleProps = isMine
-                    ? { colors: ["#0F766E", "#052E23"] as [string, string], start: { x: 0.1, y: 0 }, end: { x: 0.95, y: 1 } }
+                    ? { colors: [COLORS.primary, COLORS.primaryDark] as [string, string], start: { x: 0.1, y: 0 }, end: { x: 0.95, y: 1 } }
                     : {};
                   return (
                     <BubbleContainer
@@ -270,7 +304,7 @@ export function ConversationChatScreen({
               <ActivityIndicator size="small" color={COLORS.info} />
             ) : (
               <>
-                <Ionicons name={tag.icon} size={14} color="#334155" />
+                <Ionicons name={tag.icon} size={14} color={COLORS.textPrimary} />
                 <Text style={styles.tagChipText}>{tag.label}</Text>
               </>
             )}
@@ -290,7 +324,7 @@ export function ConversationChatScreen({
         <Pressable onPress={sendChatMessage} disabled={sending || !messageText.trim()}>
           {messageText.trim() ? (
             <LinearGradient
-              colors={["#059669", "#047857"]}
+              colors={[COLORS.primary, COLORS.primaryDark]}
               start={{ x: 0.1, y: 0 }}
               end={{ x: 0.9, y: 1 }}
               style={styles.sendButton}
@@ -303,7 +337,7 @@ export function ConversationChatScreen({
             </LinearGradient>
           ) : (
             <View style={[styles.sendButton, styles.sendButtonDisabled]}>
-              <Ionicons name="arrow-up" size={19} color="#94A3B8" />
+              <Ionicons name="arrow-up" size={19} color={COLORS.textMuted} />
             </View>
           )}
         </Pressable>
@@ -313,7 +347,7 @@ export function ConversationChatScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: SPACING.sm },
+  container: { flex: 1, paddingTop: SPACING.sm, backgroundColor: COLORS.background },
   error: { color: COLORS.badgeRed, marginBottom: 10 },
   timeline: { paddingBottom: SPACING.sm, flexGrow: 1 },
 
@@ -322,7 +356,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.surfaceMuted,
     borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 6,
@@ -345,11 +379,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.info,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontSize: 10, fontWeight: "700", color: "#FFFFFF" },
+  avatarFallback: { borderWidth: 1.5 },
+  avatarText: { fontSize: 10, fontWeight: "800" },
 
   bubble: {
     maxWidth: "76%",
@@ -360,12 +394,12 @@ const styles = StyleSheet.create({
   bubbleMine: {
     borderBottomRightRadius: 6,
     ...Platform.select({
-      ios: { shadowColor: "#047857", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10 },
+      ios: { shadowColor: COLORS.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10 },
       android: { elevation: 3 },
     }),
   },
   bubbleOther: {
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.surfaceMuted,
     borderBottomLeftRadius: 6,
   },
   bubbleTag: { borderWidth: 1, borderColor: COLORS.border },
@@ -374,7 +408,7 @@ const styles = StyleSheet.create({
 
   tagRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   tagLabel: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary },
-  tagNote: { marginTop: 4, fontSize: 13, lineHeight: 18, color: "#475569" },
+  tagNote: { marginTop: 4, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
 
   timestamp: { fontSize: 11, color: COLORS.textMuted, marginTop: 3 },
   timestampMine: { alignSelf: "flex-end", marginRight: 2 },
@@ -395,7 +429,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderSoft,
     ...SHADOW.card,
   },
-  tagChipText: { color: "#334155", fontWeight: "600", fontSize: 12 },
+  tagChipText: { color: COLORS.textPrimary, fontWeight: "600", fontSize: 12 },
 
   composer: {
     flexDirection: "row",
@@ -422,7 +456,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    ...SHADOW.card,
+    ...SHADOW.raised,
   },
-  sendButtonDisabled: { backgroundColor: "#E2E8F0" },
+  sendButtonDisabled: { backgroundColor: COLORS.borderSoft },
 });

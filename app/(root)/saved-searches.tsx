@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { useAuth } from "@clerk/clerk-expo"
 import { router } from "expo-router"
 import { Bell, ChevronLeft, Trash2 } from "lucide-react-native"
-import { getApiUrl } from "@/lib/fetch"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout"
 import { COLORS, SHADOW } from "@/constants/theme"
@@ -42,7 +42,7 @@ export default function SavedSearchesScreen() {
   const fetchSearches = useCallback(async () => {
     try {
       const token = await waitForClerkToken(getToken)
-      const response = await fetch(getApiUrl("/api/user/me/saved-searches"), {
+      const response = await fetchWithRetry(getApiUrl("/api/user/me/saved-searches"), {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
@@ -157,16 +157,21 @@ export default function SavedSearchesScreen() {
         ListHeaderComponent={
           <View
             style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: RADIUS.lg,
+              backgroundColor: COLORS.surfaceMuted,
+              borderRadius: RADIUS.xl,
+              borderWidth: 1.5,
+              borderStyle: "dashed",
+              borderColor: COLORS.borderDashed,
               padding: SPACING.md,
               marginBottom: SPACING.md,
-              ...SHADOW.card,
             }}
           >
-            <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary, marginBottom: 4 }}>
-              New alert
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <Text style={{ fontSize: 15, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.primary }}>+</Text>
+              <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
+                New alert
+              </Text>
+            </View>
             <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 12, lineHeight: 17 }}>
               We'll notify you the moment a new specialist matching this filter joins.
             </Text>
@@ -246,6 +251,7 @@ export default function SavedSearchesScreen() {
                 borderRadius: RADIUS.pill,
                 paddingVertical: 12,
                 alignItems: "center",
+                ...SHADOW.raised,
               }}
             >
               {saving ? (
@@ -263,8 +269,19 @@ export default function SavedSearchesScreen() {
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
           ) : (
             <View style={{ alignItems: "center", paddingTop: 24, paddingHorizontal: 32 }}>
-              <Bell size={28} color={COLORS.textMuted} />
-              <Text style={{ marginTop: 10, fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 19 }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: COLORS.accentPurpleSoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Bell size={26} color={COLORS.accentPurple} />
+              </View>
+              <Text style={{ marginTop: SPACING.sm, fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 19 }}>
                 No saved searches yet. Add one above to get notified about new specialists.
               </Text>
             </View>
@@ -277,32 +294,52 @@ export default function SavedSearchesScreen() {
               alignItems: "center",
               gap: SPACING.sm,
               backgroundColor: COLORS.surface,
-              borderRadius: RADIUS.lg,
-              padding: SPACING.sm,
+              borderRadius: RADIUS.xl,
+              padding: SPACING.md,
               ...SHADOW.card,
             }}
           >
             <View
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "#ede9fe",
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: COLORS.accentPurpleSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Bell size={16} color="#7c3aed" />
+              <Bell size={17} color={COLORS.accentPurple} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.textPrimary }}>
-                {item.category}
-              </Text>
-              <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
-                {item.minBudget !== null || item.maxBudget !== null
-                  ? `$${item.minBudget ?? "0"} – $${item.maxBudget ?? "∞"} / hr`
-                  : "Any budget"}
-              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: RADIUS.pill,
+                    backgroundColor: COLORS.accentPurpleSoft,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontFamily: "PlusJakartaSans_700Bold", color: COLORS.accentPurple }}>
+                    {item.category}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: RADIUS.pill,
+                    backgroundColor: COLORS.accentAmberSoft,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontFamily: "PlusJakartaSans_600SemiBold", color: COLORS.accentAmber }}>
+                    {item.minBudget !== null || item.maxBudget !== null
+                      ? `$${item.minBudget ?? "0"} – $${item.maxBudget ?? "∞"} / hr`
+                      : "Any budget"}
+                  </Text>
+                </View>
+              </View>
             </View>
             <TouchableOpacity
               onPress={() => removeSearch(item.id)}
@@ -311,15 +348,15 @@ export default function SavedSearchesScreen() {
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: "#FEE2E2",
+                backgroundColor: "#FEE2E2", // no soft-red token in theme.ts yet — left as literal
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               {deletingId === item.id ? (
-                <ActivityIndicator size="small" color="#EF4444" />
+                <ActivityIndicator size="small" color={COLORS.badgeRed} />
               ) : (
-                <Trash2 size={14} color="#EF4444" />
+                <Trash2 size={14} color={COLORS.badgeRed} />
               )}
             </TouchableOpacity>
           </View>

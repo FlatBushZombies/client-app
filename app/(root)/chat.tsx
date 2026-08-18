@@ -24,12 +24,12 @@ import { API_BASE_URL } from "@/lib/fetch";
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout";
 import { COLORS, SHADOW } from "@/constants/theme";
 
-const AVATAR_GRADIENTS: [string, string][] = [
-  ["#34D399", "#047857"],
-  ["#60A5FA", "#1D4ED8"],
-  ["#FBBF24", "#B45309"],
-  ["#F472B6", "#BE185D"],
-  ["#A78BFA", "#5B21B6"],
+// Warm pastel accent trio for fallback-initial avatars — rotates per person
+// so the list stays visually varied without leaving the warm palette.
+const AVATAR_ACCENTS: { bg: string; ring: string; text: string }[] = [
+  { bg: COLORS.primarySoft, ring: COLORS.primary, text: COLORS.primaryDark },
+  { bg: COLORS.accentPurpleSoft, ring: COLORS.accentPurple, text: COLORS.accentPurple },
+  { bg: COLORS.accentAmberSoft, ring: COLORS.accentAmber, text: COLORS.accentAmber },
 ];
 
 function getInitials(name?: string | null) {
@@ -40,10 +40,10 @@ function getInitials(name?: string | null) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function getAvatarGradient(seed: string) {
+function getAvatarAccent(seed: string) {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
+  return AVATAR_ACCENTS[hash % AVATAR_ACCENTS.length];
 }
 
 function getMessagePreview(text: string | null) {
@@ -213,6 +213,7 @@ export default function ChatScreen() {
   const [query, setQuery] = useState("");
 
   const conversationId = params.conversationId;
+  const otherClerkId = params.otherClerkId;
   const otherDisplayName = params.otherDisplayName;
   const otherAvatarUrl = params.otherAvatarUrl || null;
   const jobTitle = params.jobTitle;
@@ -264,6 +265,8 @@ export default function ChatScreen() {
       );
     }
 
+    const threadAvatarAccent = getAvatarAccent(otherDisplayName || conversationId);
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
@@ -272,21 +275,24 @@ export default function ChatScreen() {
             style={styles.backButton}
             activeOpacity={0.75}
           >
-            <Ionicons name="chevron-back" size={18} color="#334155" />
+            <Ionicons name="chevron-back" size={18} color={COLORS.textPrimary} />
           </TouchableOpacity>
 
           <View style={styles.threadAvatarWrap}>
             {otherAvatarUrl ? (
               <Image source={{ uri: otherAvatarUrl }} style={styles.threadAvatar} />
             ) : (
-              <LinearGradient
-                colors={getAvatarGradient(otherDisplayName || conversationId)}
-                start={{ x: 0.1, y: 0 }}
-                end={{ x: 0.9, y: 1 }}
-                style={styles.threadAvatar}
+              <View
+                style={[
+                  styles.threadAvatar,
+                  styles.threadAvatarFallback,
+                  { backgroundColor: threadAvatarAccent.bg, borderColor: threadAvatarAccent.ring },
+                ]}
               >
-                <Text style={styles.threadAvatarText}>{getInitials(otherDisplayName)}</Text>
-              </LinearGradient>
+                <Text style={[styles.threadAvatarText, { color: threadAvatarAccent.text }]}>
+                  {getInitials(otherDisplayName)}
+                </Text>
+              </View>
             )}
           </View>
 
@@ -294,6 +300,21 @@ export default function ChatScreen() {
             <Text style={styles.title}>{otherDisplayName || "Chat"}</Text>
             <Text style={styles.helper} numberOfLines={1}>{jobTitle || "Active conversation"}</Text>
           </View>
+
+          {otherClerkId ? (
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(root)/specialist/[clerkId]",
+                  params: { clerkId: otherClerkId, displayName: otherDisplayName, imageUrl: otherAvatarUrl || undefined },
+                })
+              }
+              style={styles.backButton}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="images-outline" size={16} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
         <ConversationChatScreen
           clerkUserId={userId}
@@ -330,7 +351,7 @@ export default function ChatScreen() {
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery("")}>
-            <Ionicons name="close-circle" size={18} color="#CBD5E1" />
+            <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -351,35 +372,52 @@ export default function ChatScreen() {
           ListHeaderComponent={<TeamQuickhandsCard />}
           renderItem={({ item }) => {
             const name = item.otherUser?.displayName || "Specialist";
+            const accent = getAvatarAccent(item.otherUser?.clerkId || item.conversationId);
+            const hasUnread = item.unreadCount > 0;
             return (
               <Pressable
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
                 onPress={() => openConversation(item)}
               >
-                {item.otherUser?.imageUrl ? (
-                  <Image source={{ uri: item.otherUser.imageUrl }} style={styles.rowAvatar} />
-                ) : (
-                  <LinearGradient
-                    colors={getAvatarGradient(item.otherUser?.clerkId || item.conversationId)}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 0.9, y: 1 }}
-                    style={styles.rowAvatar}
-                  >
-                    <Text style={styles.rowAvatarText}>{getInitials(name)}</Text>
-                  </LinearGradient>
-                )}
+                <View>
+                  {item.otherUser?.imageUrl ? (
+                    <Image source={{ uri: item.otherUser.imageUrl }} style={styles.rowAvatar} />
+                  ) : (
+                    <View
+                      style={[
+                        styles.rowAvatar,
+                        styles.rowAvatarFallback,
+                        { backgroundColor: accent.bg, borderColor: accent.ring },
+                      ]}
+                    >
+                      <Text style={[styles.rowAvatarText, { color: accent.text }]}>{getInitials(name)}</Text>
+                    </View>
+                  )}
+                  {hasUnread ? <View style={styles.unreadDot} /> : null}
+                </View>
 
                 <View style={{ flex: 1 }}>
                   <View style={styles.rowTopLine}>
-                    <Text style={styles.name} numberOfLines={1}>{name}</Text>
-                    <Text style={styles.time}>{formatConversationTime(item.lastMessageAt)}</Text>
+                    <Text style={[styles.name, hasUnread && styles.nameUnread]} numberOfLines={1}>{name}</Text>
+                    <Text style={[styles.time, hasUnread && styles.timeUnread]}>{formatConversationTime(item.lastMessageAt)}</Text>
                   </View>
-                  <Text style={styles.sub} numberOfLines={1}>
+                  <Text style={[styles.sub, hasUnread && styles.subUnread]} numberOfLines={1}>
                     {getMessagePreview(item.lastMessageText) || item.jobTitle || "Open conversation"}
                   </Text>
+                  {item.jobTitle ? (
+                    <View style={styles.jobChip}>
+                      <Text style={styles.jobChipText} numberOfLines={1}>{item.jobTitle}</Text>
+                    </View>
+                  ) : null}
                 </View>
 
-                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                {hasUnread ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{item.unreadCount > 99 ? "99+" : item.unreadCount}</Text>
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                )}
               </Pressable>
             );
           }}
@@ -469,14 +507,15 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   backButton: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
-    borderRadius: RADIUS.md,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.borderSoft,
+    ...SHADOW.card,
   },
   threadAvatarWrap: {
     ...SHADOW.card,
@@ -484,11 +523,14 @@ const styles = StyleSheet.create({
   threadAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.35)",
+  },
+  threadAvatarFallback: {
+    borderWidth: 2,
   },
   threadAvatarText: {
     color: "#FFFFFF",
@@ -500,7 +542,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING.md,
     paddingVertical: 12,
     marginBottom: SPACING.md,
@@ -519,11 +561,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: SPACING.sm,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
     borderColor: COLORS.borderSoft,
-    padding: SPACING.sm + 2,
-    marginBottom: SPACING.xs,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
     ...SHADOW.card,
   },
   rowPressed: {
@@ -532,11 +574,14 @@ const styles = StyleSheet.create({
   rowAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.35)",
+  },
+  rowAvatarFallback: {
+    borderWidth: 2,
   },
   rowAvatarText: {
     color: "#FFFFFF",
@@ -556,14 +601,63 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
+  nameUnread: {
+    color: COLORS.textPrimary,
+  },
   sub: {
     fontSize: 13,
-    color: "#64748B",
+    color: COLORS.textSecondary,
+  },
+  subUnread: {
+    color: COLORS.textPrimary,
+    fontWeight: "600",
   },
   time: {
     fontSize: 11.5,
     fontWeight: "500",
     color: COLORS.textMuted,
+  },
+  timeUnread: {
+    color: COLORS.primary,
+    fontWeight: "700",
+  },
+  unreadDot: {
+    position: "absolute",
+    top: -1,
+    right: -1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  jobChip: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    marginTop: 5,
+  },
+  jobChipText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: COLORS.primaryDark,
   },
   error: {
     color: COLORS.badgeRed,
@@ -696,7 +790,7 @@ const styles = StyleSheet.create({
   onboardingGreeting: {
     fontSize: 13,
     lineHeight: 20,
-    color: "#475569",
+    color: COLORS.textSecondary,
     marginTop: 12,
     marginBottom: 14,
   },
@@ -764,7 +858,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
-    color: "#475569",
+    color: COLORS.textSecondary,
   },
   supportLine: {
     fontSize: 12,

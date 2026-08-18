@@ -7,7 +7,6 @@ import {
   Image,
   ScrollView,
   Pressable,
-  Platform,
   ActivityIndicator,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -27,26 +26,18 @@ import {
   BarChart3,
 } from "lucide-react-native"
 import { router } from "expo-router"
-import { COLORS, SHADOW } from "@/constants/theme"
-import { getApiUrl } from "@/lib/fetch"
+import { COLORS, SHADOW, GRADIENT } from "@/constants/theme"
+import { RADIUS } from "@/constants/layout"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 import { waitForClerkToken } from "@/lib/session"
 import { showErrorToast } from "@/lib/toast"
 
 // ─── Shadow tokens ─────────────────────────────────────────────────────────────
+// Warm-tinted shadow tokens from the shared design system — cards float on
+// cream instead of using cool black shadows.
 const shadow = {
   card: SHADOW.card,
-  hero: Platform.select({
-    ios: { shadowColor: "#0f1f14", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.22, shadowRadius: 32 },
-    android: { elevation: 12 },
-  }),
-  avatar: Platform.select({
-    ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 12 },
-    android: { elevation: 6 },
-  }),
-  stat: Platform.select({
-    ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
-    android: { elevation: 1 },
-  }),
+  raised: SHADOW.raised,
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -63,11 +54,11 @@ const Profile = () => {
         const token = await waitForClerkToken(getToken)
         if (!token) { setLoading(false); return }
 
-        const jobsResponse = await fetch(getApiUrl(`/api/jobs?clerkId=${user.id}`))
+        const jobsResponse = await fetchWithRetry(getApiUrl(`/api/jobs?clerkId=${user.id}`))
         const jobsData = await jobsResponse.json()
         const tasksPosted = jobsData.success ? jobsData.data.length : 0
 
-        const appsResponse = await fetch(getApiUrl("/api/applications/client"), {
+        const appsResponse = await fetchWithRetry(getApiUrl("/api/applications/client"), {
           headers: { Authorization: `Bearer ${token}` },
         })
         const appsData = await appsResponse.json()
@@ -105,7 +96,7 @@ const Profile = () => {
   if (!user) return null
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: COLORS.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 48 }}
@@ -120,27 +111,32 @@ const Profile = () => {
                 Account
               </Text>
             </View>
-            <Text className="text-neutral-900 text-[34px] font-bold tracking-tight leading-none">
+            <Text className="text-[34px] font-bold tracking-tight leading-none" style={{ color: COLORS.textPrimary }}>
               Profile
             </Text>
           </View>
 
           <Pressable
-            className="w-11 h-11 rounded-2xl bg-neutral-100 border border-neutral-200/70 items-center justify-center"
-            style={shadow.stat}
+            className="w-11 h-11 items-center justify-center"
+            style={{
+              borderRadius: RADIUS.lg,
+              backgroundColor: COLORS.surface,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              ...shadow.card,
+            }}
           >
-            <Settings size={18} color="#374151" strokeWidth={1.8} />
+            <Settings size={18} color={COLORS.textSecondary} strokeWidth={1.8} />
           </Pressable>
         </View>
 
         {/* ── Hero Card ── */}
         <View className="px-5 pb-2">
           <View
-            className="rounded-[28px] overflow-hidden"
-            style={shadow.hero}
+            style={{ borderRadius: RADIUS.xxl, overflow: "hidden", ...shadow.raised }}
           >
           <LinearGradient
-            colors={["#123420", "#0C1A10", "#060D08"]}
+            colors={GRADIENT.brand}
             start={{ x: 0.1, y: 0 }}
             end={{ x: 0.95, y: 1 }}
           >
@@ -165,7 +161,7 @@ const Profile = () => {
             <View className="px-5 pt-6 pb-5">
               <View className="flex-row items-center gap-4">
                 {/* Avatar */}
-                <View style={shadow.avatar}>
+                <View style={shadow.card}>
                   <LinearGradient
                     colors={[COLORS.primary, COLORS.primaryDark]}
                     className="w-[76px] h-[76px] rounded-[26px] items-center justify-center"
@@ -245,33 +241,25 @@ const Profile = () => {
         <View className="px-5 pt-4">
           <Pressable
             onPress={() => router.push("/(root)/service")}
-            className="flex-row items-center bg-white rounded-[20px] px-4 py-4 border border-neutral-100 gap-3.5"
-            style={shadow.card}
+            className="flex-row items-center justify-center gap-2 py-4"
+            style={{ borderRadius: RADIUS.pill, backgroundColor: COLORS.primary, ...shadow.raised }}
           >
-            <View
-              className="w-10 h-10 rounded-xl bg-neutral-900 items-center justify-center"
-              style={shadow.avatar}
-            >
-              <Plus size={17} color="#fff" strokeWidth={2.2} />
-            </View>
-            <Text className="flex-1 text-neutral-900 text-[14px] font-semibold">
+            <Plus size={18} color="#fff" strokeWidth={2.4} />
+            <Text className="text-[15px] font-bold" style={{ color: "#fff" }}>
               Post a New Task
             </Text>
-            <View className="w-7 h-7 rounded-xl bg-neutral-100 items-center justify-center">
-              <ChevronRight size={13} color="#a3a3a3" strokeWidth={2.2} />
-            </View>
           </Pressable>
         </View>
 
         {/* ── Manage section ── */}
         <View className="px-5 mt-6">
-          <Text className="text-neutral-400 text-[10px] font-bold tracking-[2.5px] uppercase mb-3 pl-1">
+          <Text className="text-[10px] font-bold tracking-[2.5px] uppercase mb-3 pl-1" style={{ color: COLORS.textMuted }}>
             Manage
           </Text>
 
           <View
-            className="bg-white rounded-[24px] border border-neutral-100 overflow-hidden"
-            style={shadow.card}
+            className="overflow-hidden"
+            style={{ borderRadius: RADIUS.xl, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.borderSoft, ...shadow.card }}
           >
             <MenuRow
               icon={Briefcase}
@@ -281,34 +269,34 @@ const Profile = () => {
               accentIcon={COLORS.primary}
               onPress={() => router.push("/(root)/applications")}
             />
-            <View className="h-px bg-neutral-50 mx-4" />
+            <View className="h-px mx-4" style={{ backgroundColor: COLORS.borderSoft }} />
             <MenuRow
               icon={Heart}
               title="Favorites"
               subtitle="Freelancers you'd rehire"
-              accentLight="#fee2e2"
-              accentIcon="#ef4444"
+              accentLight={COLORS.accentPurpleSoft}
+              accentIcon={COLORS.accentPurple}
               onPress={() => router.push("/(root)/favorites")}
             />
-            <View className="h-px bg-neutral-50 mx-4" />
+            <View className="h-px mx-4" style={{ backgroundColor: COLORS.borderSoft }} />
             <MenuRow
               icon={Search}
               title="Saved Searches"
               subtitle="Get notified about matching specialists"
-              accentLight="#ede9fe"
-              accentIcon="#7c3aed"
+              accentLight={COLORS.accentAmberSoft}
+              accentIcon={COLORS.accentAmber}
               onPress={() => router.push("/(root)/saved-searches")}
             />
-            <View className="h-px bg-neutral-50 mx-4" />
+            <View className="h-px mx-4" style={{ backgroundColor: COLORS.borderSoft }} />
             <MenuRow
               icon={BarChart3}
               title="Analytics"
               subtitle="Jobs posted, spend, response time"
-              accentLight="#fef3c7"
-              accentIcon="#d97706"
+              accentLight={COLORS.accentGreenSoft}
+              accentIcon={COLORS.accentGreen}
               onPress={() => router.push("/(root)/analytics")}
             />
-            <View className="h-px bg-neutral-50 mx-4" />
+            <View className="h-px mx-4" style={{ backgroundColor: COLORS.borderSoft }} />
             <MenuRow
               icon={CreditCard}
               title="Payments & Billing"
@@ -316,13 +304,13 @@ const Profile = () => {
               accentLight={COLORS.infoSoft}
               accentIcon={COLORS.info}
             />
-            <View className="h-px bg-neutral-50 mx-4" />
+            <View className="h-px mx-4" style={{ backgroundColor: COLORS.borderSoft }} />
             <MenuRow
               icon={Settings}
               title="Account Settings"
               subtitle="Security, notifications, preferences"
-              accentLight="#f9fafb"
-              accentIcon="#374151"
+              accentLight={COLORS.surfaceMuted}
+              accentIcon={COLORS.textSecondary}
               last
             />
           </View>
@@ -332,13 +320,16 @@ const Profile = () => {
         <View className="px-5 mt-4">
           <Pressable
             onPress={() => signOut()}
-            className="flex-row items-center justify-center gap-3 rounded-[20px] py-4 bg-white border border-rose-100"
-            style={shadow.card}
+            className="flex-row items-center justify-center gap-3 py-4"
+            style={{ borderRadius: RADIUS.xl, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, ...shadow.card }}
           >
-            <View className="w-9 h-9 rounded-[12px] bg-rose-50 border border-rose-100 items-center justify-center">
-              <LogOut size={15} color="#ef4444" strokeWidth={1.8} />
+            <View
+              className="w-9 h-9 items-center justify-center"
+              style={{ borderRadius: RADIUS.pill, backgroundColor: COLORS.surfaceMuted, borderWidth: 1, borderColor: COLORS.border }}
+            >
+              <LogOut size={15} color={COLORS.badgeRed} strokeWidth={1.8} />
             </View>
-            <Text className="text-rose-500 text-[14px] font-semibold">
+            <Text className="text-[14px] font-semibold" style={{ color: COLORS.badgeRed }}>
               Sign Out
             </Text>
           </Pressable>
@@ -366,8 +357,8 @@ const StatCell = ({
   <View className="flex-1 items-center py-5 px-2">
     <Icon
       size={14}
-      color={isStar ? "#fbbf24" : "rgba(255,255,255,0.35)"}
-      fill={isStar ? "#fbbf24" : "none"}
+      color={isStar ? COLORS.accentAmber : "rgba(255,255,255,0.35)"}
+      fill={isStar ? COLORS.accentAmber : "none"}
       strokeWidth={isStar ? 0 : 1.8}
       style={{ marginBottom: 8 }}
     />
@@ -400,19 +391,19 @@ const MenuRow = ({
 }) => (
   <Pressable onPress={onPress} className="flex-row items-center px-4 py-[15px] gap-3.5">
     <View
-      className="w-10 h-10 rounded-xl items-center justify-center"
-      style={{ backgroundColor: accentLight, borderWidth: 1, borderColor: `${accentIcon}22` }}
+      className="w-10 h-10 items-center justify-center"
+      style={{ borderRadius: RADIUS.pill, backgroundColor: accentLight, borderWidth: 1, borderColor: `${accentIcon}22` }}
     >
       <Icon size={17} color={accentIcon} strokeWidth={1.8} />
     </View>
 
     <View className="flex-1">
-      <Text className="text-neutral-900 text-[13.5px] font-semibold mb-0.5">{title}</Text>
-      <Text className="text-neutral-400 text-[11px]">{subtitle}</Text>
+      <Text className="text-[13.5px] font-semibold mb-0.5" style={{ color: COLORS.textPrimary }}>{title}</Text>
+      <Text className="text-[11px]" style={{ color: COLORS.textSecondary }}>{subtitle}</Text>
     </View>
 
-    <View className="w-7 h-7 rounded-xl bg-neutral-100 items-center justify-center">
-      <ChevronRight size={13} color="#a3a3a3" strokeWidth={2.2} />
+    <View className="w-7 h-7 items-center justify-center" style={{ borderRadius: RADIUS.pill, backgroundColor: COLORS.surfaceMuted }}>
+      <ChevronRight size={13} color={COLORS.textMuted} strokeWidth={2.2} />
     </View>
   </Pressable>
 )

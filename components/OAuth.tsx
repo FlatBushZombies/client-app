@@ -7,6 +7,7 @@ import CustomButton from "@/components/CustomButton"
 import { icons } from "@/constants"
 import { googleOAuth } from "@/lib/auth"
 import { showErrorToast } from "@/lib/toast"
+import { COLORS } from "@/constants/theme"
 
 const OAuth = () => {
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" })
@@ -43,11 +44,11 @@ const OAuth = () => {
 
       {/* Divider */}
       <View className="flex-row items-center gap-x-4">
-        <View className="flex-1 h-[1px] bg-gray-200" />
-        <Text className="text-xs text-gray-400 uppercase tracking-wider">
+        <View className="flex-1 h-[1px]" style={{ backgroundColor: COLORS.border }} />
+        <Text className="text-xs uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
           Continue with
         </Text>
-        <View className="flex-1 h-[1px] bg-gray-200" />
+        <View className="flex-1 h-[1px]" style={{ backgroundColor: COLORS.border }} />
       </View>
 
       {/* Vertical Breathing Space */}
@@ -73,7 +74,7 @@ const OAuth = () => {
       <View className="h-6" />
 
       {/* Trust Note */}
-      <Text className="text-xs text-gray-400 text-center leading-relaxed px-6">
+      <Text className="text-xs text-center leading-relaxed px-6" style={{ color: COLORS.textMuted }}>
         We only use your account to create your profile.
         {"\n"}
         No posts. No spam.

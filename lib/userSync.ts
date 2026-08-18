@@ -1,4 +1,4 @@
-import { getApiUrl } from "@/lib/fetch"
+import { fetchWithRetry, getApiUrl } from "@/lib/fetch"
 
 type ClerkEmail = {
   emailAddress?: string | null
@@ -40,7 +40,12 @@ export async function ensureBackendUser(user: ClerkLikeUser | null | undefined) 
     return null
   }
 
-  const lookupResponse = await fetch(getApiUrl(`/api/user/get?clerkId=${user.id}`))
+  // This gates the post-sign-in redirect (user stares at a "Redirecting…"
+  // spinner until it settles), so it uses a tighter budget than the default
+  // background-retry config — bounded to ~18s per call instead of ~66s.
+  const startupFetchOpts = { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
+
+  const lookupResponse = await fetchWithRetry(getApiUrl(`/api/user/get?clerkId=${user.id}`), {}, startupFetchOpts)
   const lookupData = await parseJsonSafely(lookupResponse)
 
   if (lookupResponse.ok && lookupData?.user) {
@@ -51,13 +56,17 @@ export async function ensureBackendUser(user: ClerkLikeUser | null | undefined) 
     throw new Error(lookupData?.message || lookupData?.error || "Failed to load user")
   }
 
-  const createResponse = await fetch(getApiUrl("/api/user"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const createResponse = await fetchWithRetry(
+    getApiUrl("/api/user"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildUserPayload(user)),
     },
-    body: JSON.stringify(buildUserPayload(user)),
-  })
+    startupFetchOpts
+  )
   const createData = await parseJsonSafely(createResponse)
 
   if (!createResponse.ok || !createData?.user) {

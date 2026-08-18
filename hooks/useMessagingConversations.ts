@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { waitForClerkToken } from "@/lib/session";
+import { fetchWithRetry } from "@/lib/fetch";
 
 export type ConversationSummary = {
   conversationId: string;
@@ -15,6 +16,7 @@ export type ConversationSummary = {
   lastMessageAt: string | null;
   createdAt: string;
   updatedAt: string;
+  unreadCount: number;
 };
 
 type Options = {
@@ -56,7 +58,7 @@ export function useMessagingConversations({
       }
 
       const base = apiUrl.replace(/\/$/, "").replace(/\/api\/?$/, "");
-      const response = await fetch(`${base}/api/messaging/conversations`, {
+      const response = await fetchWithRetry(`${base}/api/messaging/conversations`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
