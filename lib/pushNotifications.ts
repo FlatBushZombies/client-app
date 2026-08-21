@@ -6,6 +6,7 @@ import { getApiUrl } from "@/lib/fetch";
 import { waitForClerkToken } from "@/lib/session";
 
 let isConfigured = false;
+let configurePromise: Promise<void> | null = null;
 
 function getProjectId() {
   return (
@@ -16,6 +17,13 @@ function getProjectId() {
 }
 
 export function configurePushNotifications() {
+  if (!configurePromise) {
+    configurePromise = configurePushNotificationsInternal();
+  }
+  return configurePromise;
+}
+
+async function configurePushNotificationsInternal() {
   if (Platform.OS === "web") {
     return;
   }
@@ -34,12 +42,23 @@ export function configurePushNotifications() {
   });
 
   if (Platform.OS === "android") {
-    void Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#1A7F5A",
-    });
+    try {
+      // Awaited (not fire-and-forget) so the channel is guaranteed to exist
+      // before registerDevicePushToken ever requests a token — on Android
+      // 8+, a notification arriving before the "default" channel is created
+      // can be dropped or shown without the intended sound/importance.
+      // Wrapped in try/catch because some Android OEM notification managers
+      // reject this call, and letting that rejection go unhandled here
+      // would surface as an uncaught error.
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#1A7F5A",
+      });
+    } catch (error) {
+      console.warn("[Push] Failed to configure Android notification channel", error);
+    }
   }
 
   isConfigured = true;
@@ -51,6 +70,11 @@ export async function registerDevicePushToken(
   if (Platform.OS === "web") {
     return null;
   }
+
+  // Guarantees the Android notification channel exists before a token is
+  // ever requested, regardless of which order the root layout's effects
+  // happen to fire in.
+  await configurePushNotifications();
 
   const projectId = getProjectId();
   if (!projectId) {
@@ -85,7 +109,11 @@ export async function registerDevicePushToken(
 
   const authToken = await waitForClerkToken(getToken);
   if (!authToken) {
-    return expoPushToken;
+    // Not treated as success — the token was never sent to the backend, so
+    // this must surface as a failure (the caller only marks registration
+    // complete when this resolves without throwing) or the app would think
+    // push is registered when the backend has no token on file at all.
+    throw new Error("Not signed in — push token not registered yet");
   }
 
   const response = await fetch(getApiUrl("/api/user/me/push-token"), {

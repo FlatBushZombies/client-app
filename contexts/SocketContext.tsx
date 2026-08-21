@@ -124,9 +124,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await waitForClerkToken(getTokenRef.current);
-      const response = await fetchWithRetry(getApiUrl(`/api/notifications/by-clerk/${user.id}`), {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const response = await fetchWithRetry(
+        getApiUrl(`/api/notifications/by-clerk/${user.id}`),
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+        { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
+      );
       const data = await response.json();
 
       if (!response.ok || !data.success || !Array.isArray(data.notifications)) {
@@ -270,13 +272,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await waitForClerkToken(getTokenRef.current);
-      const response = await fetch(getApiUrl(`/api/notifications/${notificationId}/read`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      const response = await fetchWithRetry(
+        getApiUrl(`/api/notifications/${notificationId}/read`),
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
         },
-      });
+        { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to mark notification ${notificationId} as read`);
@@ -297,13 +303,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await waitForClerkToken(getTokenRef.current);
-      const response = await fetch(getApiUrl(`/api/notifications/by-clerk/${clerkId}/read`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      const response = await fetchWithRetry(
+        getApiUrl(`/api/notifications/by-clerk/${clerkId}/read`),
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
         },
-      });
+        { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to mark all notifications as read");

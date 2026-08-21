@@ -194,7 +194,7 @@ function PushNotificationRegistration() {
   const [registeredForUserId, setRegisteredForUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    configurePushNotifications();
+    void configurePushNotifications();
     return registerNotificationTapHandler();
   }, []);
 

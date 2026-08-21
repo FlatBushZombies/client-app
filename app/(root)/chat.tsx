@@ -16,13 +16,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { router, useLocalSearchParams } from "expo-router";
 import { ConversationChatScreen } from "@/components/messaging/ConversationChatScreen";
 import { useMessagingConversations } from "@/hooks/useMessagingConversations";
 import { API_BASE_URL } from "@/lib/fetch";
 import { SCREEN_PADDING, RADIUS, SPACING } from "@/constants/layout";
 import { COLORS, SHADOW } from "@/constants/theme";
+
+const APP_LOGO = require("@/assets/images/quickhands.png");
 
 // Warm pastel accent trio for fallback-initial avatars — rotates per person
 // so the list stays visually varied without leaving the warm palette.
@@ -61,11 +63,17 @@ function formatConversationTime(iso: string | null) {
   if (!iso) return "";
   const date = new Date(iso);
   const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  if (isToday) return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return date.toLocaleDateString([], { weekday: "short" });
+  const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const calendarDayDiff = Math.round((startOfToday.getTime() - startOfDate.getTime()) / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (calendarDayDiff === 0) return `${Math.floor(diffMins / 60)}h ago`;
+  if (calendarDayDiff === 1) return "Yesterday";
+  if (calendarDayDiff < 7) return date.toLocaleDateString([], { weekday: "short" });
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
@@ -133,7 +141,7 @@ function TeamQuickhandsCard() {
       {/* Header row */}
       <View style={styles.teamHeader}>
         <View style={styles.teamAvatar}>
-          <Text style={styles.teamAvatarText}>Q</Text>
+          <Image source={APP_LOGO} style={styles.teamAvatarImage} resizeMode="cover" />
         </View>
         <View style={styles.teamHeaderText}>
           <View style={styles.teamNameRow}>
@@ -200,8 +208,23 @@ function TeamQuickhandsCard() {
   );
 }
 
+const FilterPill = ({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) => (
+  <Pressable style={[styles.pill, active && styles.pillActive]} onPress={onPress}>
+    <Text style={[styles.pillLabel, active && styles.pillLabelActive]}>{label}</Text>
+  </Pressable>
+);
+
 export default function ChatScreen() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
+  const { user } = useUser();
   const params = useLocalSearchParams<{
     conversationId?: string;
     otherClerkId?: string;
@@ -211,6 +234,7 @@ export default function ChatScreen() {
   }>();
 
   const [query, setQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "active">("all");
 
   const conversationId = params.conversationId;
   const otherClerkId = params.otherClerkId;
@@ -231,16 +255,22 @@ export default function ChatScreen() {
 
   const filteredConversations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return conversations;
+    let list = conversations;
+
+    if (activeFilter === "active") {
+      list = list.filter((conversation) => !!conversation.lastMessageAt);
     }
 
-    return conversations.filter((conversation) => {
-      const name = conversation.otherUser?.displayName?.toLowerCase() || "";
-      const title = conversation.jobTitle?.toLowerCase() || "";
-      return name.includes(normalizedQuery) || title.includes(normalizedQuery);
-    });
-  }, [conversations, query]);
+    if (normalizedQuery) {
+      list = list.filter((conversation) => {
+        const name = conversation.otherUser?.displayName?.toLowerCase() || "";
+        const title = conversation.jobTitle?.toLowerCase() || "";
+        return name.includes(normalizedQuery) || title.includes(normalizedQuery);
+      });
+    }
+
+    return list;
+  }, [conversations, query, activeFilter]);
 
   const openConversation = (conversation: ConversationRow) => {
     router.push({
@@ -330,14 +360,19 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.listHeader}>
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowDot} />
-          <Text style={styles.eyebrow}>Messages</Text>
-        </View>
         <Text style={styles.pageTitle}>Chat</Text>
-        <Text style={styles.helper}>
-          Coordinate directly with specialists on your active tasks.
-        </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/(root)/profile")}
+          activeOpacity={0.75}
+        >
+          {user?.imageUrl ? (
+            <Image source={{ uri: user.imageUrl }} style={styles.selfAvatar} />
+          ) : (
+            <View style={[styles.selfAvatar, styles.selfAvatarFallback]}>
+              <Text style={styles.selfAvatarText}>{getInitials(user?.fullName)}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchDock}>
@@ -354,6 +389,11 @@ export default function ChatScreen() {
             <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
+      </View>
+
+      <View style={styles.filters}>
+        <FilterPill label="All" active={activeFilter === "all"} onPress={() => setActiveFilter("all")} />
+        <FilterPill label="Active" active={activeFilter === "active"} onPress={() => setActiveFilter("active")} />
       </View>
 
       {!isLoaded || !isSignedIn ? (
@@ -401,23 +441,17 @@ export default function ChatScreen() {
                     <Text style={[styles.name, hasUnread && styles.nameUnread]} numberOfLines={1}>{name}</Text>
                     <Text style={[styles.time, hasUnread && styles.timeUnread]}>{formatConversationTime(item.lastMessageAt)}</Text>
                   </View>
-                  <Text style={[styles.sub, hasUnread && styles.subUnread]} numberOfLines={1}>
-                    {getMessagePreview(item.lastMessageText) || item.jobTitle || "Open conversation"}
-                  </Text>
-                  {item.jobTitle ? (
-                    <View style={styles.jobChip}>
-                      <Text style={styles.jobChipText} numberOfLines={1}>{item.jobTitle}</Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                {hasUnread ? (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadBadgeText}>{item.unreadCount > 99 ? "99+" : item.unreadCount}</Text>
+                  <View style={styles.rowBottom}>
+                    <Text style={[styles.sub, hasUnread && styles.subUnread]} numberOfLines={1}>
+                      {getMessagePreview(item.lastMessageText) || item.jobTitle || "Open conversation"}
+                    </Text>
+                    {hasUnread ? (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>{item.unreadCount > 99 ? "99+" : item.unreadCount}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                ) : (
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-                )}
+                </View>
               </Pressable>
             );
           }}
@@ -472,33 +506,58 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   listHeader: {
-    marginBottom: SPACING.md,
-  },
-  eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  eyebrowDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.primary,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: COLORS.primary,
+    justifyContent: "space-between",
+    marginBottom: SPACING.md,
   },
   pageTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800",
     color: COLORS.textPrimary,
-    letterSpacing: -0.7,
-    marginBottom: 4,
+    letterSpacing: -0.6,
+  },
+  filters: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: SPACING.md,
+  },
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+  },
+  pillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  pillLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textSecondary,
+  },
+  pillLabelActive: {
+    color: "#FFFFFF",
+  },
+  selfAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+  },
+  selfAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primarySoft,
+  },
+  selfAvatarText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.primaryDark,
   },
   headerRow: {
     flexDirection: "row",
@@ -604,7 +663,14 @@ const styles = StyleSheet.create({
   nameUnread: {
     color: COLORS.textPrimary,
   },
+  rowBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   sub: {
+    flex: 1,
     fontSize: 13,
     color: COLORS.textSecondary,
   },
@@ -645,19 +711,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#FFFFFF",
-  },
-  jobChip: {
-    alignSelf: "flex-start",
-    backgroundColor: COLORS.primarySoft,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    marginTop: 5,
-  },
-  jobChipText: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: COLORS.primaryDark,
   },
   error: {
     color: COLORS.badgeRed,
@@ -737,12 +790,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
     flexShrink: 0,
+    overflow: "hidden",
   },
-  teamAvatarText: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#6EE7B7",
-    lineHeight: 24,
+  teamAvatarImage: {
+    width: "100%",
+    height: "100%",
   },
   teamHeaderText: {
     flex: 1,
