@@ -652,29 +652,38 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
       setLoading(true)
       const token = await waitForClerkToken(getToken)
       if (!token) throw new Error("Token missing")
-      const res = await fetchWithRetry(getApiUrl("/api/jobs"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          serviceType: svcType,
-          selectedServices: formData.selectedServices.length > 0 ? formData.selectedServices : [svcType],
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          maxPrice: Number(formData.maxPrice),
-          specialistChoice: formData.specialistChoice,
-          additionalInfo: formData.additionalInfo,
-          documents: formData.documents,
-          clerkId: user.id,
-          userName: user.fullName || "Anonymous",
-          userAvatar: user.imageUrl || null,
-          location: {
-            label: taskLocation.label,
-            city: taskLocation.city,
-            latitude: taskLocation.latitude,
-            longitude: taskLocation.longitude,
-          },
-        }),
-      })
+      const res = await fetchWithRetry(
+        getApiUrl("/api/jobs"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            serviceType: svcType,
+            selectedServices: formData.selectedServices.length > 0 ? formData.selectedServices : [svcType],
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            maxPrice: Number(formData.maxPrice),
+            specialistChoice: formData.specialistChoice,
+            additionalInfo: formData.additionalInfo,
+            documents: formData.documents,
+            clerkId: user.id,
+            userName: user.fullName || "Anonymous",
+            userAvatar: user.imageUrl || null,
+            location: {
+              label: taskLocation.label,
+              city: taskLocation.city,
+              latitude: taskLocation.latitude,
+              longitude: taskLocation.longitude,
+            },
+          }),
+        },
+        // No retries: this creates a job. If the response is just slow
+        // (not actually failed) and we retried blindly, we'd risk posting
+        // the same job twice with no idempotency key to de-dupe on the
+        // backend. A single 15s attempt gives faster, honest feedback
+        // instead of silently retrying — the user can just tap post again.
+        { retries: 0, timeoutMs: 15000 }
+      )
       if (res.status === 429 || res.status === 403) {
         const body = await res.json().catch(() => ({}))
         showErrorToast("Slow down", body?.message || "Too many requests. Please wait a moment before trying again.")

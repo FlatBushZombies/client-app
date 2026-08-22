@@ -24,6 +24,7 @@ function buildUserPayload(user: ClerkLikeUser) {
     name: fullName,
     email: user.primaryEmailAddress?.emailAddress || null,
     imageUrl: user.imageUrl || null,
+    appRole: "client",
   }
 }
 

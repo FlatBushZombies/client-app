@@ -1,14 +1,9 @@
 import { router, SplashScreen, Stack } from "expo-router";
 import './globals.css';
-import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-expo";
+import { ClerkProvider } from "@clerk/clerk-expo";
 import { LogBox, Pressable, Text, View } from "react-native";
 import { tokenCache } from "@/lib/auth";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
-import {
-  configurePushNotifications,
-  registerDevicePushToken,
-  registerNotificationTapHandler,
-} from "@/lib/pushNotifications";
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -188,47 +183,6 @@ function InAppNotificationBanner() {
   );
 }
 
-function PushNotificationRegistration() {
-  const { getToken, isSignedIn } = useAuth();
-  const { user } = useUser();
-  const [registeredForUserId, setRegisteredForUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void configurePushNotifications();
-    return registerNotificationTapHandler();
-  }, []);
-
-  useEffect(() => {
-    if (!isSignedIn || !user?.id) {
-      setRegisteredForUserId(null);
-      return;
-    }
-
-    if (registeredForUserId === user.id) {
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        await registerDevicePushToken(getToken);
-        if (!cancelled) {
-          setRegisteredForUserId(user.id);
-        }
-      } catch (error) {
-        console.warn("[Push] Client app registration failed", error);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken, isSignedIn, registeredForUserId, user?.id]);
-
-  return null;
-}
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
@@ -263,8 +217,6 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <SocketProvider>
-        <PushNotificationRegistration />
-
         {/* App content renders behind the splash; revealed once it fades out */}
         <ErrorBoundary>
           <Stack screenOptions={{ headerShown: false }} />
