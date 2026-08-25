@@ -314,6 +314,11 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM)
   const [successInfo, setSuccessInfo] = useState<{ serviceType: string; matchedCount: number } | null>(null)
   const [loading, setLoading] = useState(false)
+  // Posting can take up to 45s if the backend's free-tier host is waking
+  // from a cold start (see handleSubmit's fetch timeout). A bare spinner
+  // for that long reads as a frozen app, so this surfaces a reassuring
+  // hint once the wait actually gets long instead of the whole time.
+  const [showSlowHint, setShowSlowHint] = useState(false)
   const submittingRef = useRef(false)
   const [templatesLoading, setTemplatesLoading] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
@@ -629,6 +634,15 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
     stepAnimatingRef.current = false
   }
 
+  useEffect(() => {
+    if (!loading) {
+      setShowSlowHint(false)
+      return
+    }
+    const timer = setTimeout(() => setShowSlowHint(true), 4000)
+    return () => clearTimeout(timer)
+  }, [loading])
+
   const handleSubmit = useCallback(async () => {
     if (submittingRef.current) return
     Keyboard.dismiss()
@@ -680,9 +694,13 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         // No retries: this creates a job. If the response is just slow
         // (not actually failed) and we retried blindly, we'd risk posting
         // the same job twice with no idempotency key to de-dupe on the
-        // backend. A single 15s attempt gives faster, honest feedback
-        // instead of silently retrying — the user can just tap post again.
-        { retries: 0, timeoutMs: 15000 }
+        // backend. The backend's free-tier host can take 30-60s to wake
+        // from a cold start though — 15s was cutting the single attempt
+        // off before a cold start could ever finish, which looked
+        // identical to the request just failing outright. A single patient
+        // 45s attempt still avoids the double-post risk while actually
+        // giving a cold start time to complete.
+        { retries: 0, timeoutMs: 45000 }
       )
       if (res.status === 429 || res.status === 403) {
         const body = await res.json().catch(() => ({}))
@@ -1082,6 +1100,11 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         </ScrollView>
 
         {/* ── Footer (wizard navigation) ── */}
+        {loading && showSlowHint && (
+          <Text style={st.slowHintText}>
+            Waking up the server — this can take up to a minute on the first request.
+          </Text>
+        )}
         <View style={st.footer}>
           {currentStep > 0 ? (
             <TouchableOpacity onPress={handleBack} disabled={loading} activeOpacity={0.8} style={st.backBtn}>
@@ -1657,6 +1680,15 @@ const st = StyleSheet.create({
   },
 
   // Footer
+  slowHintText: {
+    fontSize: 12,
+    fontFamily: "PlusJakartaSans_500Medium",
+    color: COLORS.textMuted,
+    textAlign: "center",
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    backgroundColor: COLORS.surface,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",

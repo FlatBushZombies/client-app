@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import * as Location from "expo-location"
 import { router } from "expo-router"
 import { useEffect, useState } from "react"
-import { useSocket } from "@/contexts/SocketContext"
+import { NOTIFICATIONS_SUSPENDED, useSocket } from "@/contexts/SocketContext"
 import { getApiUrl } from "@/lib/fetch"
 import {
   ActivityIndicator,
@@ -203,49 +203,52 @@ const HomeScreen = () => {
             </View>
           </View>
 
-          {/* Notification bell */}
-          <TouchableOpacity
-            onPress={() => router.push("/(root)/notifications")}
-            style={{
-              width:           40,
-              height:          40,
-              borderRadius:    RADIUS.pill,
-              backgroundColor: COLORS.surfaceMuted,
-              alignItems:      "center",
-              justifyContent:  "center",
-            }}
-          >
-            <Ionicons name="notifications-outline" size={20} color={COLORS.textPrimary} />
-            {unreadCount > 0 && (
-              <View
-                style={{
-                  position:        "absolute",
-                  top:              3,
-                  right:            3,
-                  minWidth:        18,
-                  height:          18,
-                  paddingHorizontal: 4,
-                  borderRadius:     9,
-                  backgroundColor:  COLORS.badgeRed,
-                  alignItems:      "center",
-                  justifyContent:  "center",
-                  borderWidth:      1.5,
-                  borderColor:      COLORS.surface,
-                }}
-              >
-                <Text
+          {/* Notification bell — hidden while notifications are suspended,
+              see NOTIFICATIONS_SUSPENDED in contexts/SocketContext.tsx */}
+          {!NOTIFICATIONS_SUSPENDED && (
+            <TouchableOpacity
+              onPress={() => router.push("/(root)/notifications")}
+              style={{
+                width:           40,
+                height:          40,
+                borderRadius:    RADIUS.pill,
+                backgroundColor: COLORS.surfaceMuted,
+                alignItems:      "center",
+                justifyContent:  "center",
+              }}
+            >
+              <Ionicons name="notifications-outline" size={20} color={COLORS.textPrimary} />
+              {unreadCount > 0 && (
+                <View
                   style={{
-                    color: COLORS.surface,
-                    fontSize: 9,
-                    fontWeight: "700",
-                    fontFamily: "DMSans_600SemiBold",
+                    position:        "absolute",
+                    top:              3,
+                    right:            3,
+                    minWidth:        18,
+                    height:          18,
+                    paddingHorizontal: 4,
+                    borderRadius:     9,
+                    backgroundColor:  COLORS.badgeRed,
+                    alignItems:      "center",
+                    justifyContent:  "center",
+                    borderWidth:      1.5,
+                    borderColor:      COLORS.surface,
                   }}
                 >
-                  {unreadBadgeLabel}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+                  <Text
+                    style={{
+                      color: COLORS.surface,
+                      fontSize: 9,
+                      fontWeight: "700",
+                      fontFamily: "DMSans_600SemiBold",
+                    }}
+                  >
+                    {unreadBadgeLabel}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Hero + Search ── */}

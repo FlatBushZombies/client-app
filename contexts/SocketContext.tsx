@@ -45,6 +45,15 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
+// Notifications are suspended repo-wide for now: the REST fetch backing
+// them was intermittently failing on the installed Android app in a way
+// that couldn't be reproduced or root-caused from outside the device, so
+// rather than keep shipping toast spam / a broken bell, this short-circuits
+// the fetch + socket connection entirely and leaves everything in a quiet,
+// empty state. The bell entry point in home.tsx is separately hidden.
+// Flip back to false (and un-hide the bell) to re-enable.
+export const NOTIFICATIONS_SUSPENDED = true;
+
 const SOCKET_URL = API_BASE_URL.replace(/\/$/, "").replace(/\/api\/?$/, "");
 const POLL_INTERVAL_MS = 15000;
 
@@ -117,7 +126,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshNotifications = useCallback(async () => {
-    if (!user?.id) {
+    if (NOTIFICATIONS_SUSPENDED || !user?.id) {
       setNotifications([]);
       return;
     }
@@ -127,7 +136,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       const response = await fetchWithRetry(
         getApiUrl(`/api/notifications/by-clerk/${user.id}`),
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-        { retries: 1, timeoutMs: 8000, retryDelayMs: 2000 }
+        // The backend's free-tier host can take 30-60s to wake from a cold
+        // start. This poll re-fires every 15s regardless (see the interval
+        // below), so a generous budget on any single attempt just means
+        // fewer wasted failed attempts while it wakes up, not a longer
+        // perceived wait.
+        { retries: 1, timeoutMs: 30000, retryDelayMs: 3000 }
       );
       const data = await response.json();
 
@@ -151,13 +165,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       hasLoadedRef.current = true;
     } catch (error) {
       console.error("[Notifications] Error fetching notifications", error);
-      const detail = error instanceof Error ? error.message : String(error);
-      showErrorToast("Couldn't load notifications", detail || "Pull down to try again.");
+      // Only surface an error toast on the very first load. This poll
+      // re-fires every 15s (and on app-foreground), so a transient miss
+      // during a backend cold start self-heals silently on the next tick —
+      // toasting on every failed poll would spam the user every 15s for as
+      // long as the server takes to wake up, which reads as far more broken
+      // than it is.
+      if (!hasLoadedRef.current) {
+        const detail = error instanceof Error ? error.message : String(error);
+        showErrorToast("Couldn't load notifications", detail || "Pull down to try again.");
+      }
     }
   }, [showInAppNotification, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (NOTIFICATIONS_SUSPENDED || !user?.id) {
       setNotifications([]);
       return;
     }
@@ -182,7 +204,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [refreshNotifications, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (NOTIFICATIONS_SUSPENDED || !user?.id) {
       socketRef.current?.removeAllListeners();
       socketRef.current?.close();
       socketRef.current = null;
