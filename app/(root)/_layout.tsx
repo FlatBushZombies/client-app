@@ -17,7 +17,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { COLORS, SHADOW } from "@/constants/theme"
 import { useSocket } from "@/contexts/SocketContext"
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
+// expo-router forks react-navigation as of SDK 56 (expo-router no longer
+// depends on @react-navigation/* in app code) — <Tabs>'s tabBar render
+// prop is shaped by that fork, not the standalone @react-navigation/
+// bottom-tabs package, so the type has to come from the same place the
+// runtime props actually do or they silently drift apart (TS caught this
+// exact mismatch on upgrade, same as freelance-app's identical _layout.tsx
+// earlier this session). No public subpath export exists yet for this
+// specific type, hence the deep import.
+import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs"
 
 // @callstack/liquid-glass is iOS 26+ only. Import conditionally so
 // the app doesn't crash on Android or older iOS.

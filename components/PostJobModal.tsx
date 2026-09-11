@@ -1152,7 +1152,7 @@ export default function PostJobModal({ visible, onClose }: PostJobModalProps) {
         {activeDateField !== null && (
           <View style={st.calOverlay}>
             <TouchableOpacity
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               activeOpacity={1}
               onPress={() => setActiveDateField(null)}
             />
